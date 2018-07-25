@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>turtlebot3_dqn</name>
+  <version>0.0.0</version>
+  <description>The turtlebot3_dqn package</description>
+  <license>Apache 2.0</license>
+  <author email="kkjong89@robotis.com">kkjong89</author>
+  <maintainer email="pyo@robotis.com">Pyo</maintainer>
+
+  <url type="emanual">http://turtlebot3.robotis.com</url>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <exec_depend>rospy</exec_depend>
+</package>

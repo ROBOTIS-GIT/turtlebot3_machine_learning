@@ -1,0 +1,4 @@
+<launch>
+  <node pkg="turtlebot3_dqn" type="result_graph" name="result_graph" output="screen" />
+  <node pkg="turtlebot3_dqn" type="action_graph" name="action_graph" output="screen" />
+</launch>

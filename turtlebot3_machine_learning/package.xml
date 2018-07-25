@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>turtlebot3_machine_learning</name>
+  <version>0.0.0</version>
+  <description>
+    The turtlebot3_machine_learning package (meta package)
+  </description>
+  <license>Apache License 2.0</license>
+  <author email="kkjong@robotis.com">Gilber</author>
+  <maintainer email="pyo@robotis.com">Pyo</maintainer>
+  <buildtool_depend>catkin</buildtool_depend>
+  <exec_depend>turtlebot3_dqn</exec_depend>
+  <export><metapackage/></export>
+</package>
