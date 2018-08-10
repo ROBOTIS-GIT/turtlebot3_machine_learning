@@ -40,8 +40,8 @@ class Env():
         self.pub_cmd_vel = rospy.Publisher('cmd_vel', Twist, queue_size=5)
         self.sub_odom = rospy.Subscriber('odom', Odometry, self.getOdometry)
         self.reset_proxy = rospy.ServiceProxy('gazebo/reset_simulation', Empty)
-        self.unpause_proxy = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
-        self.pause_proxy = rospy.ServiceProxy('/gazebo/pause_physics', Empty)
+        self.unpause_proxy = rospy.ServiceProxy('gazebo/unpause_physics', Empty)
+        self.pause_proxy = rospy.ServiceProxy('gazebo/pause_physics', Empty)
         self.respawn_goal = Respawn()
 
     def getGoalDistace(self):
@@ -134,12 +134,12 @@ class Env():
         vel_cmd = Twist()
         vel_cmd.linear.x = 0.15
         vel_cmd.angular.z = ang_vel
-        #self.pub_cmd_vel.publish(vel_cmd)
+        self.pub_cmd_vel.publish(vel_cmd)
 
         data = None
         while data is None:
             try:
-                data = rospy.wait_for_message('/scan', LaserScan, timeout=5)
+                data = rospy.wait_for_message('scan', LaserScan, timeout=5)
             except:
                 pass
 
@@ -149,16 +149,16 @@ class Env():
         return np.asarray(state), reward, done
 
     def reset(self):
-        rospy.wait_for_service('/gazebo/reset_simulation')
+        rospy.wait_for_service('gazebo/reset_simulation')
         try:
             self.reset_proxy()
         except (rospy.ServiceException) as e:
-            print("/gazebo/reset_simulation service call failed")
+            print("gazebo/reset_simulation service call failed")
 
         data = None
         while data is None:
             try:
-                data = rospy.wait_for_message('/scan', LaserScan, timeout=5)
+                data = rospy.wait_for_message('scan', LaserScan, timeout=5)
             except:
                 pass
 
