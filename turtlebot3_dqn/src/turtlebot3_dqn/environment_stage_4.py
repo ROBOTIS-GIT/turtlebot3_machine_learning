@@ -69,7 +69,7 @@ class Env():
     def getState(self, scan):
         scan_range = []
         heading = self.heading
-        min_range = 0.13
+        min_range = 0.15
         done = False
 
         for i in range(len(scan.ranges)):
