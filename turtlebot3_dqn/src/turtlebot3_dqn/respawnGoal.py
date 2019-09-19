@@ -17,6 +17,7 @@
 
 # Authors: Gilbert #
 
+import resource_retriever
 import rospy
 import random
 import time
@@ -27,9 +28,7 @@ from geometry_msgs.msg import Pose
 
 class Respawn():
     def __init__(self):
-        self.modelPath = os.path.dirname(os.path.realpath(__file__))
-        self.modelPath = self.modelPath.replace('turtlebot3_machine_learning/turtlebot3_dqn/src/turtlebot3_dqn',
-                                                'turtlebot3_simulations/turtlebot3_gazebo/models/turtlebot3_square/goal_box/model.sdf')
+        self.modelPath = resource_retriever.get_filename('package://turtlebot3_gazebo/models/turtlebot3_square/goal_box/model.sdf', False)
         self.f = open(self.modelPath, 'r')
         self.model = self.f.read()
         self.stage = rospy.get_param('/stage_number')

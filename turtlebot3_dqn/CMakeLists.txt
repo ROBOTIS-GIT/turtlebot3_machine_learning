@@ -7,7 +7,7 @@ project(turtlebot3_dqn)
 ################################################################################
 # Find catkin packages and libraries for catkin and system dependencies
 ################################################################################
-find_package(catkin REQUIRED COMPONENTS rospy)
+find_package(catkin REQUIRED COMPONENTS rospy resource_retriever)
 
 ################################################################################
 # Setup for python modules and scripts
@@ -26,7 +26,7 @@ catkin_python_setup()
 # Declare catkin specific configuration to be passed to dependent projects
 ################################################################################
 catkin_package(
-  CATKIN_DEPENDS rospy
+  CATKIN_DEPENDS rospy resource_retriever
 )
 
 ################################################################################
@@ -46,11 +46,6 @@ catkin_install_python(PROGRAMS
   nodes/moving_obstacle
   nodes/combination_obstacle_1
   nodes/combination_obstacle_2
-  src/${PROJECT_NAME}/environment_stage_1.py
-  src/${PROJECT_NAME}/environment_stage_2.py
-  src/${PROJECT_NAME}/environment_stage_3.py
-  src/${PROJECT_NAME}/environment_stage_4.py
-  src/${PROJECT_NAME}/respawnGoal.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
