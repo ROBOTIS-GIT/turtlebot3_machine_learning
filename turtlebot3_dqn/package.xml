@@ -14,4 +14,5 @@
   <url type="bugtracker">https://github.com/ROBOTIS-GIT/turtlebot3_machine_learning/issues</url>
   <buildtool_depend>catkin</buildtool_depend>
   <depend>rospy</depend>
+  <depend>resource_retriever</depend>
 </package>
