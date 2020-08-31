@@ -66,12 +66,14 @@ class ReinforceAgent():
             if not os.path.isfile(self.dirPath+str(self.load_episode)+".h5"):
                 print("file: ",str(self.dirPath+str(self.load_episode)+".h5"),"is not present!")
                 print("continue with randomly initialized model")
+                self.load_episode = 0
             else:
                 self.model.set_weights(load_model(self.dirPath+str(self.load_episode)+".h5").get_weights())
 
                 with open(self.dirPath+str(self.load_episode)+'.json') as outfile:
                     param = json.load(outfile)
                     self.epsilon = param.get('epsilon')
+                    self.load_episode = param.get('episode')
 
     def buildModel(self):
         model = Sequential()
@@ -208,8 +210,8 @@ if __name__ == '__main__':
 
                 rospy.loginfo('Ep: %d score: %.2f memory: %d epsilon: %.2f time: %d:%02d:%02d',
                               e, score, len(agent.memory), agent.epsilon, h, m, s)
-                param_keys = ['epsilon']
-                param_values = [agent.epsilon]
+                param_keys = ['epsilon', 'episode']
+                param_values = [agent.epsilon, e]
                 param_dictionary = dict(zip(param_keys, param_values))
                 break
 
