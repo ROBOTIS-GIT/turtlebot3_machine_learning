@@ -62,6 +62,8 @@ class ReinforceAgent():
 
         self.updateTargetModel()
 
+        self.param_dictionary = {"epsilon": 1, "episode": 0}
+
         if self.load_model:
             if not os.path.isfile(self.dirPath+str(self.load_episode)+".h5"):
                 print("file: ",str(self.dirPath+str(self.load_episode)+".h5"),"is not present!")
