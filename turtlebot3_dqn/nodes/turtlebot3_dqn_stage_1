@@ -63,8 +63,9 @@ class ReinforceAgent():
         self.updateTargetModel()
 
         if self.load_model:
-            if os.path.isfile(self.dirPath+str(self.load_episode)+".h5"):
+            if not os.path.isfile(self.dirPath+str(self.load_episode)+".h5"):
                 print("file: ",str(self.dirPath+str(self.load_episode)+".h5"),"is not present!")
+                print("continue with randomly initialized model")
             else:
                 self.model.set_weights(load_model(self.dirPath+str(self.load_episode)+".h5").get_weights())
 
