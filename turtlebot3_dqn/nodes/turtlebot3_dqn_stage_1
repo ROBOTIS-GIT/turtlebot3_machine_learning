@@ -61,9 +61,6 @@ class ReinforceAgent():
         self.target_model = self.buildModel()
 
         self.updateTargetModel()
-
-        self.param_dictionary = {"epsilon": 1, "episode": 0}
-
         if self.load_model:
             if not os.path.isfile(self.dirPath+str(self.load_episode)+".h5"):
                 print("file: ",str(self.dirPath+str(self.load_episode)+".h5"),"is not present!")
@@ -165,6 +162,7 @@ if __name__ == '__main__':
     scores, episodes = [], []
     global_step = 0
     start_time = time.time()
+    param_dictionary = {"epsilon": 1, "episode": 0}
 
     for e in range(agent.load_episode + 1, EPISODES):
         done = False
