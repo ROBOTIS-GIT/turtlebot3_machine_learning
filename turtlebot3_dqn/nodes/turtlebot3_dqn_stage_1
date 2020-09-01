@@ -166,7 +166,11 @@ if __name__ == '__main__':
     scores, episodes = [], []
     global_step = 0
     start_time = time.time()
-    param_dictionary = {"epsilon": 1, "episode": 0}
+    param_keys = ['epsilon', 'episode']
+    param_values = [agent.epsilon, agent.load_episode]
+    param_dictionary = dict(zip(param_keys, param_values))
+    print(param_dictionary)
+
 
     for e in range(agent.load_episode + 1, EPISODES):
         done = False
