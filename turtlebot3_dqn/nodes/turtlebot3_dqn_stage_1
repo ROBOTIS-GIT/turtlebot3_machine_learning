@@ -71,8 +71,9 @@ class ReinforceAgent():
 
                 with open(self.dirPath+str(self.load_episode)+'.json') as outfile:
                     param = json.load(outfile)
-                    self.epsilon = param.get('epsilon')
-                    self.load_episode = param.get('episode')
+
+                self.epsilon = param.get('epsilon')
+                self.load_episode = param.get('episode')
 
                 print("latest model restored")
                 print("previously trained for", str(self.load_episode) ,"episodes")
@@ -189,7 +190,7 @@ if __name__ == '__main__':
             get_action.data = [action, score, reward]
             pub_get_action.publish(get_action)
 
-            if e % 10 == 0:
+            if e % 10 == 0 and t == 0:
                 agent.model.save(agent.dirPath + str(e) + '.h5')
                 with open(agent.dirPath + str(e) + '.json', 'w') as outfile:
                     json.dump(param_dictionary, outfile)
