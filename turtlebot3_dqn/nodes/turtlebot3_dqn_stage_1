@@ -74,6 +74,9 @@ class ReinforceAgent():
                     self.epsilon = param.get('epsilon')
                     self.load_episode = param.get('episode')
 
+                print("latest model restored")
+                print("previously trained for", str(self.load_episode) ,"episodes")
+
     def buildModel(self):
         model = Sequential()
         dropout = 0.2
