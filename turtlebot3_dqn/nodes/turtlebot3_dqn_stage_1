@@ -197,6 +197,7 @@ if __name__ == '__main__':
                 agent.model.save(agent.dirPath + "latest" + '.h5')
                 with open(agent.dirPath + "latest" + '.json', 'w') as outfile:
                     json.dump(param_dictionary, outfile)
+                    print("MODEL SAVED", param_dictionary)
 
             if t >= 500:
                 rospy.loginfo("Time out!!")
