@@ -3,18 +3,22 @@
   <param name="stage_number"  value="$(arg stage)"/>
 
   <group if="$(eval arg('stage') == 1)">
-    <node pkg="turtlebot3_gazebo"  type="turtlebot3_stage_1.launch" name="turtlebot3_stage_1" output="screen" />
+    <include file="$(find turtlebot3_gazebo)/launch/turtlebot3_stage_1.launch">
+    </include>
   </group>
   
   <group if="$(eval arg('stage') == 2)">
-    <node pkg="turtlebot3_gazebo"  type="turtlebot3_stage_2.launch" name="turtlebot3_stage_2" output="screen" />
+    <include file="$(find turtlebot3_gazebo)/launch/turtlebot3_stage_2.launch">
+    </include>
   </group>
   
   <group if="$(eval arg('stage') == 3)">
-    <node pkg="turtlebot3_gazebo"  type="turtlebot3_stage_3.launch" name="turtlebot3_stage_3" output="screen" />
+    <include file="$(find turtlebot3_gazebo)/launch/turtlebot3_stage_3.launch">
+    </include>
   </group>
   
   <group if="$(eval arg('stage') == 4)">
-    <node pkg="turtlebot3_gazebo"  type="turtlebot3_stage_4.launch" name="turtlebot3_stage_4" output="screen" />
+    <include file="$(find turtlebot3_gazebo)/launch/turtlebot3_stage_4.launch">
+    </include>
   </group>
 </launch>
