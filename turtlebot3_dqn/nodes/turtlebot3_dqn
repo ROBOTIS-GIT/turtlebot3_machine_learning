@@ -173,8 +173,8 @@ if __name__ == '__main__':
     state_size = 28
     action_size = 5
 
-    env = Env(action_size)
-    agent = ReinforceAgent(state_size, action_size, args.stage)
+    env = Env.Env(action_size)
+    agent = ReinforceAgent(state_size, action_size, stage)
 
     scores, episodes = [], []
     global_step = 0
