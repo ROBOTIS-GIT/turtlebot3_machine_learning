@@ -80,6 +80,8 @@ class Env():
             else:
                 scan_range.append(scan.ranges[i])
 
+        obstacle_min_range = round(min(scan_range), 2)
+        obstacle_angle = np.argmin(scan_range)
         if min_range > min(scan_range) > 0:
             done = True
 
@@ -87,7 +89,7 @@ class Env():
         if current_distance < 0.2:
             self.get_goalbox = True
 
-        return scan_range + [heading, current_distance], done
+        return scan_range + [heading, current_distance, obstacle_min_range, obstacle_angle], done
 
     def setReward(self, state, done, action):
         yaw_reward = []
