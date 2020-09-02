@@ -1,0 +1,18 @@
+<launch>
+  <arg name="stage" default="4"/>
+  <param name="stage_number"  value="$(arg stage)"/>
+
+  <node pkg="turtlebot3_dqn" type="turtlebot3_dqn" name="turtlebot3_dqn_stage_$(arg stage)" output="screen" >
+    <param name="--stage" value="$(arg stage)" type="string" />
+  </node>
+
+  <group if="$(eval arg('stage') == 3)">
+    <node pkg="turtlebot3_dqn"  type="moving_obstacle" name="moving_obstacle" output="screen" />
+  </group>
+
+  <group if="$(eval arg('stage') == 4)">
+    <node pkg="turtlebot3_dqn" type="combination_obstacle_1" name="combination_obstacle_1" output="screen" />
+    <node pkg="turtlebot3_dqn" type="combination_obstacle_2" name="combination_obstacle_2" output="screen" />
+  </group>
+
+</launch>
