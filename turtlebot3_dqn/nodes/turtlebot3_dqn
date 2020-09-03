@@ -26,6 +26,8 @@ import random
 import time
 import sys
 
+from turtlebot3_dqn.nodes.utils import log_utils
+
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from collections import deque
 from std_msgs.msg import Float32MultiArray
@@ -172,6 +174,8 @@ if __name__ == '__main__':
 
     state_size = 28
     action_size = 5
+
+    logger = log_utils.setup_logger("turtlebot3", state_size, action_size, goal_dim=2)
 
     env = Env.Env(action_size)
     agent = ReinforceAgent(state_size, action_size, stage)
