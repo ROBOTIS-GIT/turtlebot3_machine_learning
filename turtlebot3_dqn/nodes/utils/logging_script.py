@@ -66,7 +66,7 @@ class logger:
             print("No proper number of elements:", len(line), len(self.keys))
             pass
 
-    def write(self, lines: list):
+    def write(self, lines):
         if type(lines[0]) == list:
             for line in lines:
                 self.write_line(line)
