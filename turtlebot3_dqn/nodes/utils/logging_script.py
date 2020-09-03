@@ -7,7 +7,7 @@ import pandas as pd
 
 
 class logger:
-    def __init__(self, title="log.txt", path="logs/", log="", keys=[], dtypes=[], sep=",", db_config=None, load_full=False):
+    def __init__(self, title="log.txt", path="/root/logs/", log="", keys=[], dtypes=[], sep=",", db_config=None, load_full=False):
         self.title = title
         self.path = path
         self.keys = keys
