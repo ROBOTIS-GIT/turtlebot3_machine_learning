@@ -51,7 +51,7 @@ def setup_logger(title, n_state_vals, action_dim, goal_dim):
     log.db_create_table()
     return log, keys_
 
-def make_log_entry(log: logger, title, run_id, episode_number,
+def make_log_entry(logger, title, run_id, episode_number,
                    episode_step, from_state, to_state, pred_to_state,
                    action, estimated_q,
                    reward, terminal):
