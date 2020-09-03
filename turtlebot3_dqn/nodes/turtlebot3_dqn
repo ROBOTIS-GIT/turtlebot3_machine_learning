@@ -32,7 +32,7 @@ from collections import deque
 from std_msgs.msg import Float32MultiArray
 from keras.models import Sequential, load_model
 from keras.optimizers import RMSprop
-from keras.layers import Dense, Dropout, Activation
+from keras.layers import Dense, Dropout, Activation, BatchNormalization
 from importlib import import_module
 
 EPISODES = 3000
@@ -82,16 +82,17 @@ class ReinforceAgent():
                 print("previously trained for", str(self.load_episode), "episodes")
 
     def buildModel(self):
-        model = Sequential()
-        dropout = 0.2
-
-        model.add(Dense(64, input_shape=(self.state_size,), activation='relu', kernel_initializer='lecun_uniform'))
-
-        model.add(Dense(64, activation='relu', kernel_initializer='lecun_uniform'))
-        model.add(Dropout(dropout))
-
-        model.add(Dense(self.action_size, kernel_initializer='lecun_uniform'))
-        model.add(Activation('linear'))
+        model = Sequential([
+                Dense(64, input_shape=(self.state_size,), kernel_initializer='lecun_uniform'),
+                BatchNormalization(),
+                Activation('relu'),
+                Dense(64, kernel_initializer='lecun_uniform'),
+                BatchNormalization(),
+                Activation('relu'),
+                Dropout(0.2),
+                Dense(self.action_size, kernel_initializer='le_cun_uniform'),
+                Activation('softmax')
+        ])
         model.compile(loss='mse', optimizer=RMSprop(lr=self.learning_rate, rho=0.9, epsilon=1e-06))
         model.summary()
 
