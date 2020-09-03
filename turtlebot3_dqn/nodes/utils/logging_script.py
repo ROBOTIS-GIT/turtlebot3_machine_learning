@@ -56,7 +56,7 @@ class logger:
         header = header[:-1] + "\n"
         return header
 
-    def write_line(self, line: list):
+    def write_line(self, line):
         try:
             assert len(line) == len(self.keys)
             for cell in line:
