@@ -96,7 +96,9 @@ class logger:
 
     def to_DataFrame(self):
         log = [line.split(self.sep) for line in self.log.split("\n")]
-        return pd.DataFrame(np.array(log)[:-1])
+        df =  pd.DataFrame(np.array(log)[:-1])
+        print df
+        return df
         # if self.load_full:
         #     StringData = io.StringIO(self.log)
         # else:
