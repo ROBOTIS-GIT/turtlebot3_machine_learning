@@ -194,7 +194,7 @@ if __name__ == '__main__':
         state = env.reset()
         goal = env.getGoal()
         score = 0
-        log.save()
+        log.save(save_to_db=True)
         for episode_step in range(agent.episode_step):
             action = agent.getAction(state)
 
