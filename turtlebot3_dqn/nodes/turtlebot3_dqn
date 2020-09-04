@@ -175,8 +175,8 @@ if __name__ == '__main__':
     state_size = 28
     action_size = 5
 
-    logger = log_utils.setup_logger("turtlebot3", state_size, action_size, goal_dim=2)
-    print("LOGGGGGGGGGGGGG", logger.log)
+    logger, keys = log_utils.setup_logger("turtlebot3", state_size, action_size, goal_dim=2)
+    print("LOGGGGGGGGGGGGG", logger.log, keys)
     env = Env.Env(action_size)
     agent = ReinforceAgent(state_size, action_size, stage)
 
