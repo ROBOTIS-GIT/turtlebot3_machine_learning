@@ -94,7 +94,7 @@ class logger:
 
 
     def to_DataFrame(self):
-        print(self.log.split(self.sep))
+        print([line.split(",") for line in self.log.split("\n")])
         if self.load_full:
             StringData = io.StringIO(self.log)
         else:
