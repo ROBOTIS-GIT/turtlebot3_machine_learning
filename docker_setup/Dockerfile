@@ -22,6 +22,7 @@ RUN /bin/bash -c "source ~/.bashrc"
 RUN apt install python-pip --yes
 RUN /tmp/yes/bin/pip install --upgrade pip
 RUN /tmp/yes/bin/pip uninstall numpy --yes && /tmp/yes/bin/pip install numpy==1.16
+RUN /tmp/yes/bin/pip install psycopg2
 
 # ROS dependency packages
 RUN /tmp/yes/bin/pip install rosinstall msgpack defusedxml netifaces

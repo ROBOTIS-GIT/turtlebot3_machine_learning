@@ -26,6 +26,7 @@ import random
 import time
 import sys
 
+from utils import log_utils
 
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from collections import deque
@@ -175,6 +176,9 @@ if __name__ == '__main__':
     state_size = 28
     action_size = 5
 
+    run_id = int(time.time())
+    log_title = "turtlebot3"
+    log, keys = log_utils.setup_logger(log_title, state_size, action_size, goal_dim=2)
     env = Env.Env(action_size)
     agent = ReinforceAgent(state_size, action_size, stage)
 
@@ -185,16 +189,22 @@ if __name__ == '__main__':
     param_values = [agent.epsilon, agent.load_episode]
     param_dictionary = dict(zip(param_keys, param_values))
 
-    for e in range(agent.load_episode + 1, EPISODES):
+    for episode_number in range(agent.load_episode + 1, EPISODES):
         done = False
         state = env.reset()
+        goal = env.getGoal()
         score = 0
-        for t in range(agent.episode_step):
+
+        for episode_step in range(agent.episode_step):
             action = agent.getAction(state)
 
             next_state, reward, done = env.step(action)
 
             agent.appendMemory(state, action, reward, next_state, done)
+            log_utils.make_log_entry(log, log_title, run_id, episode_number,
+                                     episode_step, state, next_state, goal,
+                                     action, agent.q_value,
+                                     reward, done)
 
             if len(agent.memory) >= agent.train_start:
                 if global_step <= agent.target_update:
@@ -207,9 +217,9 @@ if __name__ == '__main__':
             get_action.data = [action, score, reward]
             pub_get_action.publish(get_action)
 
-            if e % 10 == 0 and t == 0:
-                agent.model.save(agent.dirPath + str(e) + '.h5')
-                with open(agent.dirPath + str(e) + '.json', 'w') as outfile:
+            if episode_number % 10 == 0 and episode_step == 0:
+                agent.model.save(agent.dirPath + str(episode_number) + '.h5')
+                with open(agent.dirPath + str(episode_number) + '.json', 'w') as outfile:
                     json.dump(param_dictionary, outfile)
 
                 agent.model.save(agent.dirPath + "latest" + '.h5')
@@ -217,7 +227,7 @@ if __name__ == '__main__':
                     json.dump(param_dictionary, outfile)
                     print("MODEL SAVED", param_dictionary)
 
-            if t >= 500:
+            if episode_step >= 500:
                 rospy.loginfo("Time out!!")
                 done = True
 
@@ -226,21 +236,21 @@ if __name__ == '__main__':
                 pub_result.publish(result)
                 agent.updateTargetModel()
                 scores.append(score)
-                episodes.append(e)
+                episodes.append(episode_number)
                 m, s = divmod(int(time.time() - start_time), 60)
                 h, m = divmod(m, 60)
 
                 rospy.loginfo('Ep: %d score: %.2f memory: %d epsilon: %.2f time: %d:%02d:%02d',
-                              e, score, len(agent.memory), agent.epsilon, h, m, s)
+                              episode_number, score, len(agent.memory), agent.epsilon, h, m, s)
                 param_keys = ['epsilon', 'episode']
-                param_values = [agent.epsilon, e]
+                param_values = [agent.epsilon, episode_number]
                 param_dictionary = dict(zip(param_keys, param_values))
                 break
 
             global_step += 1
             if global_step % agent.target_update == 0:
                 rospy.loginfo("UPDATE TARGET NETWORK")
-
+        log.save(save_to_db=True)
         if agent.epsilon > agent.epsilon_min:
             agent.epsilon *= agent.epsilon_decay
 
