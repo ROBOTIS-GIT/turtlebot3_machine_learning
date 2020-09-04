@@ -59,5 +59,3 @@ RUN sed -i 's/<samples>360<\/samples>/<samples>24<\/samples>/g' /root/catkin_ws/
 #Other
 RUN apt install vim --yes
 RUN mkdir /root/logs
-RUN touch /root/logs/turtlebot3.log
-#ENTRYPOINT /bin/bash -c "source ~/.bashrc"
