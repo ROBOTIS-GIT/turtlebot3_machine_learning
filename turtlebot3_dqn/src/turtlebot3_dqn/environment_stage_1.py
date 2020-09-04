@@ -92,12 +92,12 @@ class Env():
         if current_goal_distance < 0.2:
             self.get_goalbox = True
 
-        return scan_range + [heading, current_goal_distance, obstacle_min_range, obstacle_angle], done
+        return scan_range + [heading, current_goal_distance, 0, 0], done
 
     def setReward(self, state, done, action):
         yaw_reward = []
-        current_goal_distance = state[-1]
-        heading = state[-2]
+        current_goal_distance = state[-3]
+        heading = state[-4]
 
         for i in range(5):
             angle = -pi / 4 + heading + (pi / 8 * i) + pi / 2
