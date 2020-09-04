@@ -1,5 +1,6 @@
 import os
 import io
+import numpy as np
 import sys
 import database_connection
 
@@ -94,13 +95,14 @@ class logger:
 
 
     def to_DataFrame(self):
-        print([line.split(",") for line in self.log.split("\n")])
-        if self.load_full:
-            StringData = io.StringIO(self.log)
-        else:
-            StringData = io.StringIO(self.header + self.log)
+        log = [line.split(self.sep) for line in self.log.split("\n")]
+        return pd.DataFrame(np.array(log))
+        # if self.load_full:
+        #     StringData = io.StringIO(self.log)
+        # else:
+        #     StringData = io.StringIO(self.header + self.log)
 
-        return pd.read_csv(StringData, sep=self.sep)
+        #return pd.read_csv(StringData, sep=self.sep)
 
     def save_log_to_database(self):
         if not database_connection.table_exists(self.db_config):
