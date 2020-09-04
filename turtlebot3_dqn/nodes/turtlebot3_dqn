@@ -178,7 +178,6 @@ if __name__ == '__main__':
     run_id = int(time.time())
     log_title = "turtlebot3"
     log, keys = log_utils.setup_logger(log_title, state_size, action_size, goal_dim=2)
-    print("LOGGGGGGGGGGGGG", log.log, keys)
     env = Env.Env(action_size)
     agent = ReinforceAgent(state_size, action_size, stage)
 
