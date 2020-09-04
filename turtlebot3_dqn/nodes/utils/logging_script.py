@@ -103,7 +103,7 @@ class logger:
     def save_log_to_database(self):
         if not database_connection.table_exists(self.db_config):
             database_connection.create_table(self.db_config)
-        df = self.to_DataFrame()
+        df = self.log.to_DataFrame()
         if len(df) > 0:
             database_connection.insert_to_table(self.db_config, df.values)
         else:
