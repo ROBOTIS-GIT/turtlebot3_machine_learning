@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from datetime import datetime
+import datetime
 
 import numpy as np
 from logging_script import logger
