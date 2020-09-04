@@ -52,16 +52,17 @@ def setup_logger(title, n_state_vals, action_dim, goal_dim):
     return log, keys_
 
 def make_log_entry(log, title, run_id, episode_number,
-                   episode_step, from_state, to_state, pred_to_state,
-                   action, estimated_q,
+                   episode_step, from_state, to_state, goal,
+                   action, q_vals,
                    reward, terminal):
     int_vals = [run_id, episode_number, episode_step]
 
     float_vals = np.asarray(from_state).flatten().tolist()
     float_vals += np.asarray(to_state).flatten().tolist()
-    float_vals += pred_to_state.flatten().tolist()
     float_vals += action.flatten().tolist()
-    float_vals += [reward, estimated_q]
+    float_vals += np.asarray(goal).flatten().tolist()
+    float_vals += np.asarray(q_vals).flatten().tolist()
+    float_vals += [reward]
 
     string_vals = [title]
 
