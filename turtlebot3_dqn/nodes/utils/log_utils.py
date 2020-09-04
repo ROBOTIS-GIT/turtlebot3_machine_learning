@@ -33,13 +33,13 @@ def setup_logger(title, n_state_vals, action_dim, goal_dim):
 
     db_config = {
         "database": {
-            "host": "dwh.alan",
+            "host": "dwh.prd.akw",
             "user": "lwidowski",
-            "passwd": ",$pm/^N6a,&eI5K\;]",
+            "passwd": "$moothOperat0r",
             "database": "sandbox",
             "port": "5432"
         },
-        "schema_name": "dbt_reinforcement_learning",
+        "schema_name": "lwidowski",
         "table_name": "tb_b_" + title,
         "key_list": keys_,
         "dtype_list": dtypes_,
