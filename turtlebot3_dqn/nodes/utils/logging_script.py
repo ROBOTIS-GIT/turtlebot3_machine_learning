@@ -98,7 +98,7 @@ class logger:
             StringData = io.StringIO(self.log)
         else:
             StringData = io.StringIO(self.header + self.log)
-        print(StringData.split(self.sep))
+        #print(StringData.split(self.sep))
         return pd.read_csv(StringData, sep=self.sep)
 
     def save_log_to_database(self):
