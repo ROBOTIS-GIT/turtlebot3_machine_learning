@@ -9,7 +9,7 @@ def setup_logger(title, n_state_vals, action_dim, goal_dim):
 
     float_keys = ["from_state_" + str(n) for n in range(n_state_vals)]
     float_keys += ["to_state_" + str(n) for n in range(n_state_vals)]
-    float_keys += ["action_" + str(n) for n in range(1)]
+    float_keys += ["action"]# ["action_" + str(n) for n in range(1)]
     float_keys += ["goal_" + str(n) for n in range(goal_dim)]
     float_keys += ["q_vals_" + str(n) for n in range(action_dim)]
     float_keys += ["Reward"]
@@ -59,7 +59,7 @@ def make_log_entry(log, title, run_id, episode_number,
 
     float_vals = np.asarray(from_state).flatten().tolist()
     float_vals += np.asarray(to_state).flatten().tolist()
-    float_vals += action.flatten().tolist()
+    float_vals += [action] #action.flatten().tolist()
     float_vals += np.asarray(goal).flatten().tolist()
     float_vals += np.asarray(q_vals).flatten().tolist()
     float_vals += [reward]
