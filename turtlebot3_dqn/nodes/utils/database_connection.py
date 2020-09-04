@@ -96,8 +96,6 @@ def insert_to_table(config, data, show_progress=False):
                 sql += ", "
         sql += ")"
         val = tuple(dat)
-	print("SQL",sql)
-	print("VAL",val)
         mycursor.execute(sql, val)
         conn.commit()
 
