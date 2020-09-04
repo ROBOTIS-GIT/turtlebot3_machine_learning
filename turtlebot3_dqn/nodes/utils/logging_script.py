@@ -95,8 +95,8 @@ class logger:
 
 
     def to_DataFrame(self):
-        log = [line.split(self.sep) for line in self.log.split("\n")]
-        df =  pd.DataFrame(np.array(log)[:-1])
+        log = [line.split(self.sep) for line in self.log.split("\n")][:-1]
+	df =  pd.DataFrame(np.array(log))
         print df
         return df
         # if self.load_full:
@@ -109,6 +109,7 @@ class logger:
     def save_log_to_database(self):
         if not database_connection.table_exists(self.db_config):
             database_connection.create_table(self.db_config)
+	    print("TABLE CREATED")
 
         df = self.to_DataFrame()
         if len(df) > 0:
@@ -122,6 +123,7 @@ class logger:
     def db_create_table(self):
         if not database_connection.table_exists(self.db_config):
             database_connection.create_table(self.db_config)
+
 
 # log = logger(keys = ["a","b"],load_full=False)
 # lines = [[1,2]]

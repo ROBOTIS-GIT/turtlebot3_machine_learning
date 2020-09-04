@@ -95,10 +95,9 @@ def insert_to_table(config, data, show_progress=False):
             if i != len(config["key_list"]) - 1:
                 sql += ", "
         sql += ")"
-        print(dat)
         val = tuple(dat)
-        print(dat)
-        print(sql)
+	print("SQL",sql)
+	print("VAL",val)
         mycursor.execute(sql, val)
         conn.commit()
 
