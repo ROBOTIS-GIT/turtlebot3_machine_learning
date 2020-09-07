@@ -2,7 +2,7 @@
   <arg name="stage" default="1"/>
   <param name="stage_number"  value="$(arg stage)"/>
 
-  <node pkg="turtlebot3_dqn" type="turtlebot3_dqn_her" name="turtlebot3_dqn_her" output="screen">
+  <node pkg="turtlebot3_dqn" type="turtlebot3_dqn_her" name="turtlebot3_dqn" output="screen">
     <param name="stage" value="$(arg stage)" type="string" />
   </node>
 
