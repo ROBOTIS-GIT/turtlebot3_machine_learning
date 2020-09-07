@@ -1,7 +1,0 @@
-<launch>
-  <arg name="stage" default="3"/>
-  <param name="stage_number"  value="$(arg stage)"/>
-  <node pkg="turtlebot3_dqn" type="turtlebot3_dqn_stage_3" name="turtlebot3_dqn_stage_3" output="screen" />
-
-  <node pkg="turtlebot3_dqn"  type="moving_obstacle" name="moving_obstacle" output="screen" />
-</launch>
