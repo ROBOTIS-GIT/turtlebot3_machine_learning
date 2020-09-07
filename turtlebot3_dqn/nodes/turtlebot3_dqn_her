@@ -126,13 +126,13 @@ class ReinforceAgent():
 
     def trainModel(self, target=False):
         mini_batch = self.her.sample()
-        X_batch = np.empty((0, self.state_size), dtype=np.float64)
+        X_batch = np.empty((0, self.state_size + self.goal_size), dtype=np.float64)
         Y_batch = np.empty((0, self.action_size), dtype=np.float64)
 
         for i in range(self.batch_size):
             states = mini_batch[i][0]
             actions = mini_batch[i][1]
-            goal = mini_batch[i][2]
+            goals = mini_batch[i][2]
             rewards = mini_batch[i][3]
             next_states = mini_batch[i][4]
             dones = mini_batch[i][5]
@@ -148,14 +148,14 @@ class ReinforceAgent():
 
             next_q_value = self.getQvalue(rewards, next_target, dones)
 
-            X_batch = np.append(X_batch, np.array([states.copy()]), axis=0)
+            X_batch = np.append(X_batch, np.asarray([np.hstack((states, goals)).copy()]), axis=0)
             Y_sample = q_value.copy()
 
             Y_sample[0][actions] = next_q_value
             Y_batch = np.append(Y_batch, np.array([Y_sample[0]]), axis=0)
 
             if dones:
-                X_batch = np.append(X_batch, np.array([next_states.copy()]), axis=0)
+                X_batch = np.append(X_batch, np.asarray([np.hstack(next_states, goals)).copy()]), axis=0)
                 Y_batch = np.append(Y_batch, np.array([[rewards] * self.action_size]), axis=0)
 
         self.model.fit(X_batch, Y_batch, batch_size=self.batch_size, epochs=1, verbose=0)
