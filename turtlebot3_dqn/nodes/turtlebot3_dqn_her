@@ -38,7 +38,7 @@ from importlib import import_module
 EPISODES = 3000
 
 class ReinforceAgent():
-    def __init__(self, state_size, action_size, stage="1"):
+    def __init__(self, state_size, action_size, goal_size, stage="1"):
         self.pub_result = rospy.Publisher('result', Float32MultiArray, queue_size=5)
         self.dirPath = os.path.dirname(os.path.realpath(__file__))
         self.dirPath = self.dirPath.replace('turtlebot3_dqn/nodes', 'turtlebot3_dqn/save_model/stage_' + stage + '_')
@@ -48,6 +48,7 @@ class ReinforceAgent():
         self.load_episode = "latest"
         self.state_size = state_size
         self.action_size = action_size
+        self.goal_size = goal_size
         self.episode_step = 6000
         self.target_update = 2000
         self.discount_factor = 0.99
@@ -84,7 +85,7 @@ class ReinforceAgent():
         model = Sequential()
         dropout = 0.2
 
-        model.add(Dense(64, input_shape=(self.state_size,), activation='relu', kernel_initializer='lecun_uniform'))
+        model.add(Dense(64, input_shape=(self.state_size+self.goal_size,), activation='relu', kernel_initializer='lecun_uniform'))
 
         model.add(Dense(64, activation='relu', kernel_initializer='lecun_uniform'))
         model.add(Dropout(dropout))
@@ -105,12 +106,21 @@ class ReinforceAgent():
     def updateTargetModel(self):
         self.target_model.set_weights(self.model.get_weights())
 
+    def predict(self, state, goal):
+        features = np.hstack(np.asarray(state).flatten(), np.asarray(goal).flatten())
+        return self.model.predict(features.reshape(1, len(state)+len(goal)))
+
+    def predict_target(self, state, goal):
+        features = np.hstack(np.asarray(state).flatten(), np.asarray(goal).flatten())
+        return self.target_model.predict(features.reshape(1, len(state)+len(goal)))
+
+
     def getAction(self, state, goal):
         if np.random.rand() <= self.epsilon:
             self.q_value = np.zeros(self.action_size)
             return random.randrange(self.action_size)
         else:
-            q_value = self.model.predict(state.reshape(1, len(state)))
+            q_value = self.predict(state, goal)
             self.q_value = q_value
             return np.argmax(q_value[0])
 
@@ -127,14 +137,14 @@ class ReinforceAgent():
             next_states = mini_batch[i][4]
             dones = mini_batch[i][5]
 
-            q_value = self.model.predict(states.reshape(1, len(states)))
+            q_value = self.predict(state, goal)
             self.q_value = q_value
 
             if target:
-                next_target = self.target_model.predict(next_states.reshape(1, len(next_states)))
+                next_target = self.predict_target(next_states, goal)
 
             else:
-                next_target = self.model.predict(next_states.reshape(1, len(next_states)))
+                next_target = q_value = self.predict(next_states, goal)
 
             next_q_value = self.getQvalue(rewards, next_target, dones)
 
@@ -166,12 +176,13 @@ if __name__ == '__main__':
 
     state_size = 28
     action_size = 5
+    goal_size = 2
 
     run_id = int(time.time())
     log_title = "turtlebot3"
-    log, keys = log_utils.setup_logger(log_title, state_size, action_size, goal_dim=2)
+    log, keys = log_utils.setup_logger(log_title, state_size, action_size, goal_dim=goal_size)
     env = Env.Env(action_size)
-    agent = ReinforceAgent(state_size, action_size, stage)
+    agent = ReinforceAgent(state_size, action_size, goal_size, stage)
 
     scores, episodes = [], []
     global_step = 0
