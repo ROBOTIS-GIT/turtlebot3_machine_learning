@@ -37,7 +37,6 @@ from importlib import import_module
 
 EPISODES = 3000
 
-
 class ReinforceAgent():
     def __init__(self, state_size, action_size, stage="1"):
         self.pub_result = rospy.Publisher('result', Float32MultiArray, queue_size=5)
@@ -58,7 +57,7 @@ class ReinforceAgent():
         self.epsilon_min = 0.05
         self.batch_size = 64
         self.train_start = 64
-        self.her = HindsightExperienceReplay(maxlen=1000000, batch_size = self.batch_size)
+        self.her = HindsightExperienceReplay(maxlen=1000000, batch_size=self.batch_size)
 
         self.model = self.buildModel()
         self.target_model = self.buildModel()
@@ -152,6 +151,7 @@ class ReinforceAgent():
 
 
 if __name__ == '__main__':
+    #agent.her.n_entrys
     # parser = argparse.ArgumentParser(description="Argumentparser DEscribtion")
     # parser.add_argument('--stage', action="store", type=str, default="1")
     # args = parser.parse_args()
@@ -160,7 +160,7 @@ if __name__ == '__main__':
 
     Env = import_module("src.turtlebot3_dqn.environment_stage_" + stage)
 
-    rospy.init_node('turtlebot3_dqn_stage_'+stage)
+    rospy.init_node('turtlebot3_dqn_stage_' + stage)
 
     pub_result = rospy.Publisher('result', Float32MultiArray, queue_size=5)
     pub_get_action = rospy.Publisher('get_action', Float32MultiArray, queue_size=5)
@@ -248,4 +248,3 @@ if __name__ == '__main__':
         log.save(save_to_db=True)
         if agent.epsilon > agent.epsilon_min:
             agent.epsilon *= agent.epsilon_decay
-
