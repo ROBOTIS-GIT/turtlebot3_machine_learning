@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import datetime
-
+import json
 import numpy as np
 from logging_script import logger
 
@@ -11,6 +11,7 @@ def setup_logger(title, n_state_vals, action_dim, goal_dim):
     float_keys += ["to_state_" + str(n) for n in range(n_state_vals)]
     float_keys += ["action"]# ["action_" + str(n) for n in range(1)]
     float_keys += ["goal_" + str(n) for n in range(goal_dim)]
+    float_keys += ["position_" + str(n) for n in range(goal_dim)]
     float_keys += ["q_vals_" + str(n) for n in range(action_dim)]
     float_keys += ["Reward"]
 
@@ -30,14 +31,16 @@ def setup_logger(title, n_state_vals, action_dim, goal_dim):
               ["boolean" for _ in range(len(bool_keys))] + \
               ["timestamp" for _ in range(len(time_keys))]
 
+    with open('cfg/db_usr_cfg.json') as json_file:
+        db_usr_cfg = json.load(json_file)
 
     db_config = {
         "database": {
-            "host": "dwh.prd.akw",
-            "user": "lwidowski",
-            "passwd": "$moothOperat0r",
-            "database": "sandbox",
-            "port": "5432"
+            "host": db_usr_cfg["host"],
+            "user": db_usr_cfg["lwidowski"],
+            "passwd": db_usr_cfg["$moothOperat0r"],
+            "database": db_usr_cfg["sandbox"],
+            "port": db_usr_cfg["5432"]
         },
         "schema_name": "lwidowski",
         "table_name": "tb_b_" + title,
@@ -52,7 +55,7 @@ def setup_logger(title, n_state_vals, action_dim, goal_dim):
     return log, keys_
 
 def make_log_entry(log, title, run_id, episode_number,
-                   episode_step, from_state, to_state, goal,
+                   episode_step, from_state, to_state, goal, position,
                    action, q_vals,
                    reward, terminal):
     int_vals = [run_id, episode_number, episode_step]
@@ -61,6 +64,7 @@ def make_log_entry(log, title, run_id, episode_number,
     float_vals += np.asarray(to_state).flatten().tolist()
     float_vals += [action] #action.flatten().tolist()
     float_vals += np.asarray(goal).flatten().tolist()
+    float_vals += np.asarray(position).flatten().tolist()
     float_vals += np.asarray(q_vals).flatten().tolist()
     float_vals += [reward]
 
