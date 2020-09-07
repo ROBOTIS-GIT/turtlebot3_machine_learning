@@ -105,7 +105,7 @@ class ReinforceAgent():
     def updateTargetModel(self):
         self.target_model.set_weights(self.model.get_weights())
 
-    def getAction(self, state):
+    def getAction(self, state, goal):
         if np.random.rand() <= self.epsilon:
             self.q_value = np.zeros(self.action_size)
             return random.randrange(self.action_size)
@@ -122,9 +122,10 @@ class ReinforceAgent():
         for i in range(self.batch_size):
             states = mini_batch[i][0]
             actions = mini_batch[i][1]
-            rewards = mini_batch[i][2]
-            next_states = mini_batch[i][3]
-            dones = mini_batch[i][4]
+            goal = mini_batch[i][2]
+            rewards = mini_batch[i][3]
+            next_states = mini_batch[i][4]
+            dones = mini_batch[i][5]
 
             q_value = self.model.predict(states.reshape(1, len(states)))
             self.q_value = q_value
@@ -151,11 +152,6 @@ class ReinforceAgent():
 
 
 if __name__ == '__main__':
-    #agent.her.n_entrys
-    # parser = argparse.ArgumentParser(description="Argumentparser DEscribtion")
-    # parser.add_argument('--stage', action="store", type=str, default="1")
-    # args = parser.parse_args()
-    # stage = args.stage
     stage = rospy.get_param("/turtlebot3_dqn/stage")
 
     Env = import_module("src.turtlebot3_dqn.environment_stage_" + stage)
