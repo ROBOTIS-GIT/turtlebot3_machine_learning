@@ -155,7 +155,7 @@ class ReinforceAgent():
             Y_batch = np.append(Y_batch, np.array([Y_sample[0]]), axis=0)
 
             if dones:
-                X_batch = np.append(X_batch, np.asarray([np.hstack(next_states, goals)).copy()]), axis=0)
+                X_batch = np.append(X_batch, np.asarray([np.hstack((next_states, goals)).copy()]), axis=0)
                 Y_batch = np.append(Y_batch, np.array([[rewards] * self.action_size]), axis=0)
 
         self.model.fit(X_batch, Y_batch, batch_size=self.batch_size, epochs=1, verbose=0)
