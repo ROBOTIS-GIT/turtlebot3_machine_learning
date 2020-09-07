@@ -43,7 +43,8 @@ RUN git clone https://github.com/ROBOTIS-GIT/turtlebot3_msgs.git /root/catkin_ws
 RUN git clone https://github.com/ROBOTIS-GIT/turtlebot3_simulations.git /root/catkin_ws/src/turtlebot3_simulations --branch kinetic-devel
 RUN touch ros_own_entrypoint.sh && sed "2d" ros_entrypoint.sh > ros_own_entrypoint.sh
 RUN /bin/bash -c '. /opt/ros/kinetic/setup.bash; cd ~/catkin_ws; catkin_make'
-RUN echo "  rebuild itxx"
+RUN echo "REBUILD HERE"
+
 RUN git clone https://github.com/AlessioAnalytics/turtlebot3_machine_learning.git /root/catkin_ws/src/turtlebot3_machine_learning
 RUN /bin/bash -c '. /opt/ros/kinetic/setup.bash; cd ~/catkin_ws; catkin_make'
 
@@ -59,5 +60,7 @@ RUN sed -i 's/<samples>360<\/samples>/<samples>24<\/samples>/g' /root/catkin_ws/
 
 #Other
 RUN apt install vim --yes
+RUN mkdir /root/logs
+
 
 #ENTRYPOINT /bin/bash -c "source ~/.bashrc"
