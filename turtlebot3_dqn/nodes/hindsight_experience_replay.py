@@ -6,8 +6,8 @@ class HindsightExperienceReplay:
         self.n_entrys = 0
         self.batch_size = batch_size
 
-    def append_memory(self, state, action, reward, next_state, done):
-        self.memory.append((state, action, reward, next_state, done))
+    def append_memory(self, state, action, goal, reward, next_state, done):
+        self.memory.append((state, action, goal, reward, next_state, done))
 
     def sample(self):
         mini_batch = random.sample(self.memory, self.batch_size)
