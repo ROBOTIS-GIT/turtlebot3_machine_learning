@@ -92,7 +92,6 @@ class ReinforceAgent():
                 Activation('relu'),
                 Dropout(0.2),
                 Dense(self.action_size, kernel_initializer='lecun_uniform'),
-                Activation('softmax')
         ])
         model.compile(loss='mse', optimizer=RMSprop(lr=self.learning_rate, rho=0.9, epsilon=1e-06))
         model.summary()
