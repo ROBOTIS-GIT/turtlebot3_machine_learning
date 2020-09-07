@@ -27,7 +27,7 @@ import sys
 
 from utils import log_utils
 
-sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from hindsight_experience_replay import HindsightExperienceReplay
 from std_msgs.msg import Float32MultiArray
 from keras.models import Sequential, load_model
