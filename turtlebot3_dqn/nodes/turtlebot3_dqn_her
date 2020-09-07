@@ -107,11 +107,11 @@ class ReinforceAgent():
         self.target_model.set_weights(self.model.get_weights())
 
     def predict(self, state, goal):
-        features = np.hstack(np.asarray(state).flatten(), np.asarray(goal).flatten())
+        features = np.hstack((np.asarray(state).flatten(), np.asarray(goal).flatten()))
         return self.model.predict(features.reshape(1, len(state)+len(goal)))
 
     def predict_target(self, state, goal):
-        features = np.hstack(np.asarray(state).flatten(), np.asarray(goal).flatten())
+        features = np.hstack((np.asarray(state).flatten(), np.asarray(goal).flatten()))
         return self.target_model.predict(features.reshape(1, len(state)+len(goal)))
 
 
