@@ -45,10 +45,10 @@ def setup_logger(title, n_state_vals, action_dim, goal_dim):
     db_config = {
         "database": {
             "host": db_usr_cfg["host"],
-            "user": db_usr_cfg["lwidowski"],
-            "passwd": db_usr_cfg["$moothOperat0r"],
-            "database": db_usr_cfg["sandbox"],
-            "port": db_usr_cfg["5432"]
+            "user": db_usr_cfg["user"],
+            "passwd": db_usr_cfg["passwd"],
+            "database": db_usr_cfg["database"],
+            "port": db_usr_cfg["port"]
         },
         "schema_name": "lwidowski",
         "table_name": "tb_b_" + title,
