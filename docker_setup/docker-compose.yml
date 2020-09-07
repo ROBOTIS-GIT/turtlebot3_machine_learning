@@ -8,6 +8,7 @@ services:
     volumes:
       - "/tmp/.X11-unix:/tmp/.X11-unix:rw"
       - "./logs/:/root/logs:rw"
+      - "./cfg/:/root/cfg:rw"
         #  - "/home/lwidowski/RoboticsProjects/catkin_ws/src/alessio_turtlebot/turtlebot3_machine_learning_docker/saved_models/:/root/catkin_ws/src/turtlebot3_machine_learning/turtlebot3_dqn/save_model:rw"
     environment:
       - DISPLAY=$DISPLAY

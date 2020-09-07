@@ -31,7 +31,7 @@ def setup_logger(title, n_state_vals, action_dim, goal_dim):
               ["boolean" for _ in range(len(bool_keys))] + \
               ["timestamp" for _ in range(len(time_keys))]
 
-    with open('cfg/db_usr_cfg.json') as json_file:
+    with open('/root/cfg/db_usr_cfg.json') as json_file:
         db_usr_cfg = json.load(json_file)
 
     db_config = {
