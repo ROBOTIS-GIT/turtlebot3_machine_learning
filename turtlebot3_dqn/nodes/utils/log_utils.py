@@ -31,8 +31,16 @@ def setup_logger(title, n_state_vals, action_dim, goal_dim):
               ["boolean" for _ in range(len(bool_keys))] + \
               ["timestamp" for _ in range(len(time_keys))]
 
-    with open('/root/cfg/db_usr_cfg.json') as json_file:
-        db_usr_cfg = json.load(json_file)
+  #  with open('/root/cfg/db_usr_cfg.json') as json_file:
+    #    db_usr_cfg = json.load(json_file)
+
+    db_usr_cfg = { #TODO remove this
+        "host": "dwh.prd.akw",
+        "user": "lwidowski",
+        "passwd": "$moothOperat0r",
+        "database": "sandbox",
+        "port": "5432"
+    }
 
     db_config = {
         "database": {
