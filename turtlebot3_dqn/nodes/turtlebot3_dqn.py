@@ -85,10 +85,8 @@ class ReinforceAgent():
     def buildModel(self):
         model = Sequential([
                 Dense(64, input_shape=(self.state_size,), kernel_initializer='lecun_uniform'),
-                BatchNormalization(),
                 Activation('relu'),
                 Dense(64, kernel_initializer='lecun_uniform'),
-                BatchNormalization(),
                 Activation('relu'),
                 Dropout(0.2),
                 Dense(self.action_size, kernel_initializer='lecun_uniform'),
