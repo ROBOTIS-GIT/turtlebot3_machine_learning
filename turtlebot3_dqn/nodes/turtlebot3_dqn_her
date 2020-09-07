@@ -198,7 +198,7 @@ if __name__ == '__main__':
         score = 0
 
         for episode_step in range(agent.episode_step):
-            action = agent.getAction(state)
+            action = agent.getAction(state, goal)
 
             next_state, reward, done = env.step(action)
             her_goal = env.getPosition()
