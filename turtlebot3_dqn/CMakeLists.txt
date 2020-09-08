@@ -37,7 +37,7 @@ catkin_package(
 # Install
 ################################################################################
 catkin_install_python(PROGRAMS
-  nodes/turtlebot3_dq
+  nodes/turtlebot3_dqn
   nodes/turtlebot3_dqn_her
   nodes/result_graph
   nodes/action_graph
