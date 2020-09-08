@@ -10,9 +10,14 @@ class HindsightExperienceReplay:
         self.episode_replay = []
         self.memory = deque(maxlen=maxlen)
         self.batch_size = batch_size
+        self.n_entrys = 0
 
     def append_episode_replay(self, state, action, goal, position, reward, next_state, done):
         self.episode_replay.append((state, action, goal, position, reward, next_state, done))
+
+    def append_memory(self, transition):
+        self.memory.append(transition)
+        self.n_entrys += 1
 
     def sample_memory(self):
         return random.sample(self.memory, self.batch_size)
@@ -21,10 +26,10 @@ class HindsightExperienceReplay:
         T = len(self.episode_replay)
         for t in range(T):
             state, action, goal, position, reward, next_state, done = self.episode_replay[t]
-            self.memory.append((state, action, goal, reward, next_state, done))
+            self.append_memory((state, action, goal, reward, next_state, done))
             transitions = self.sample_transitions(t)
             for transition in transitions:
-                self.memory.append(transition)
+                self.append_memory(transition)
         self.episode_replay=[]
 
     def sample_transitions(self, t):
