@@ -22,13 +22,14 @@ class HindsightExperienceReplay:
         for t in range(T):
             state, action, goal, position, reward, next_state, done = self.episode_replay[t]
             self.memory.append((state, action, goal, reward, next_state, done))
-            transitions = self.sample_transitions(t,T)
+            transitions = self.sample_transitions(t)
             for transition in transitions:
                 self.memory.append(transition)
         self.episode_replay=[]
 
-    def sample_transitions(self, t, T):
+    def sample_transitions(self, t):
         transitions = []
+        T = len(self.episode_replay)
         for _ in range(self.k):
             if self.strategie == "futute":
                 transition_idx = np.random.randint(t,T)
