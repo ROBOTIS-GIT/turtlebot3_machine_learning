@@ -58,7 +58,7 @@ class ReinforceAgent():
         self.epsilon_min = 0.05
         self.batch_size = 64
         self.train_start = 64
-        self.her = HindsightExperienceReplay(maxlen=1000000, batch_size=self.batch_size)
+        self.her = HindsightExperienceReplay(k=1, strategie="futue",maxlen=1000000, batch_size=self.batch_size)
 
         self.model = self.buildModel()
         self.target_model = self.buildModel()
@@ -202,7 +202,7 @@ if __name__ == '__main__':
 
             next_state, reward, done = env.step(action)
             her_goal = env.getPosition()
-            agent.her.append_memory(state, action, goal, her_goal, reward, next_state, done)
+            agent.her.append_episode_replay(state, action, goal, her_goal, reward, next_state, done)
             log_utils.make_log_entry(log, log_title, run_id, episode_number,
                                      episode_step, state, next_state, goal, her_goal,
                                      action, agent.q_value,
@@ -252,6 +252,8 @@ if __name__ == '__main__':
             global_step += 1
             if global_step % agent.target_update == 0:
                 rospy.loginfo("UPDATE TARGET NETWORK")
+
+        agent.her.import_episode()
         log.save(save_to_db=True)
         if agent.epsilon > agent.epsilon_min:
             agent.epsilon *= agent.epsilon_decay
