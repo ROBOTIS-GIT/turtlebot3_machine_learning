@@ -22,6 +22,14 @@ class HindsightExperienceReplay:
     def sample_memory(self):
         return random.sample(self.memory, self.batch_size)
 
+    def sample_episode_replay(self, t):
+        T = len(self.episode_replay)
+        if self.strategie == "futute":
+            transition_idx = np.random.randint(t, T)
+        elif self.strategie == "episode":
+            transition_idx = np.random.randint(0, T)
+        return self.episode_replay[transition_idx]
+
     def import_episode(self):
         T = len(self.episode_replay)
         for t in range(T):
@@ -34,14 +42,8 @@ class HindsightExperienceReplay:
 
     def sample_transitions(self, t):
         transitions = []
-        T = len(self.episode_replay)
         for _ in range(self.k):
-            if self.strategie == "futute":
-                transition_idx = np.random.randint(t,T)
-            elif self.strategie == "episode":
-                transition_idx = np.random.randint(0,T)
-            sample_transition = self.episode_replay[transition_idx]
-            _, _, _, goal_position, _, _, _ = sample_transition
+            _, _, _, goal_position, _, _, _ = self.sample_episode_replay(t)
             sample_state, sample_action, _, position, _, sample_next_state, sample_done = self.episode_replay[t]
 
             # TODO map the following to a reward_function that is passed to the class

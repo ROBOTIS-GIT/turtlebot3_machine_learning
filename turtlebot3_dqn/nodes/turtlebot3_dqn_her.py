@@ -125,7 +125,7 @@ class ReinforceAgent():
             return np.argmax(q_value[0])
 
     def trainModel(self, target=False):
-        mini_batch = self.her.sample()
+        mini_batch = self.her.sample_memory()
         X_batch = np.empty((0, self.state_size + self.goal_size), dtype=np.float64)
         Y_batch = np.empty((0, self.action_size), dtype=np.float64)
 
