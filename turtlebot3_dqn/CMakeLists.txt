@@ -37,15 +37,12 @@ catkin_package(
 # Install
 ################################################################################
 catkin_install_python(PROGRAMS
-  nodes/turtlebot3_dqn_stage_1
-  nodes/turtlebot3_dqn_stage_2
-  nodes/turtlebot3_dqn_stage_3
-  nodes/turtlebot3_dqn_stage_4
-  nodes/result_graph
-  nodes/action_graph
-  nodes/moving_obstacle
-  nodes/combination_obstacle_1
-  nodes/combination_obstacle_2
+  nodes/turtlebot3_dqn.py
+  nodes/result_graph.py
+  nodes/action_graph.py
+  nodes/moving_obstacle.py
+  nodes/combination_obstacle_1.py
+  nodes/combination_obstacle_2.py
   src/${PROJECT_NAME}/environment_stage_1.py
   src/${PROJECT_NAME}/environment_stage_2.py
   src/${PROJECT_NAME}/environment_stage_3.py
