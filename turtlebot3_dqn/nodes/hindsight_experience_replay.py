@@ -4,7 +4,7 @@ import numpy as np
 
 
 class HindsightExperienceReplay:
-    def __init__(self, k=1, strategie="futue", maxlen=1000000, batch_size=64):
+    def __init__(self, k=1, strategie="future", maxlen=1000000, batch_size=64):
         self.k=k
         self.strategie = strategie
         self.episode_replay = []
@@ -24,7 +24,7 @@ class HindsightExperienceReplay:
 
     def sample_episode_replay(self, t):
         T = len(self.episode_replay)
-        if self.strategie == "futute":
+        if self.strategie == "future":
             transition_idx = np.random.randint(t, T)
         elif self.strategie == "episode":
             transition_idx = np.random.randint(0, T)
