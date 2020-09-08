@@ -16,6 +16,7 @@
 #################################################################################
 
 # Authors: Gilbert #
+import argparse
 
 import rospy
 import os
@@ -24,22 +25,25 @@ import numpy as np
 import random
 import time
 import sys
+
+from utils import log_utils
+
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from collections import deque
 from std_msgs.msg import Float32MultiArray
-from src.turtlebot3_dqn.environment_stage_1 import Env
 from keras.models import Sequential, load_model
 from keras.optimizers import RMSprop
-from keras.layers import Dense, Dropout, Activation
-import os
+from keras.layers import Dense, Dropout, Activation, BatchNormalization
+from importlib import import_module
 
 EPISODES = 3000
 
+
 class ReinforceAgent():
-    def __init__(self, state_size, action_size):
+    def __init__(self, state_size, action_size, stage="1"):
         self.pub_result = rospy.Publisher('result', Float32MultiArray, queue_size=5)
         self.dirPath = os.path.dirname(os.path.realpath(__file__))
-        self.dirPath = self.dirPath.replace('turtlebot3_dqn/nodes', 'turtlebot3_dqn/save_model/stage_1_')
+        self.dirPath = self.dirPath.replace('turtlebot3_dqn/nodes', 'turtlebot3_dqn/save_model/stage_' + stage + '_')
         self.result = Float32MultiArray()
 
         self.load_model = True
@@ -62,33 +66,31 @@ class ReinforceAgent():
 
         self.updateTargetModel()
         if self.load_model:
-            if not os.path.isfile(self.dirPath+str(self.load_episode)+".h5"):
-                print("file: ",str(self.dirPath+str(self.load_episode)+".h5"),"is not present!")
+            if not os.path.isfile(self.dirPath + str(self.load_episode) + ".h5"):
+                print("file: ", str(self.dirPath + str(self.load_episode) + ".h5"), "is not present!")
                 print("continue with randomly initialized model")
                 self.load_episode = 0
             else:
-                self.model.set_weights(load_model(self.dirPath+str(self.load_episode)+".h5").get_weights())
+                self.model.set_weights(load_model(self.dirPath + str(self.load_episode) + ".h5").get_weights())
 
-                with open(self.dirPath+str(self.load_episode)+'.json') as outfile:
+                with open(self.dirPath + str(self.load_episode) + '.json') as outfile:
                     param = json.load(outfile)
 
                 self.epsilon = param.get('epsilon')
                 self.load_episode = param.get('episode')
 
                 print("latest model restored")
-                print("previously trained for", str(self.load_episode) ,"episodes")
+                print("previously trained for", str(self.load_episode), "episodes")
 
     def buildModel(self):
-        model = Sequential()
-        dropout = 0.2
-
-        model.add(Dense(64, input_shape=(self.state_size,), activation='relu', kernel_initializer='lecun_uniform'))
-
-        model.add(Dense(64, activation='relu', kernel_initializer='lecun_uniform'))
-        model.add(Dropout(dropout))
-
-        model.add(Dense(self.action_size, kernel_initializer='lecun_uniform'))
-        model.add(Activation('linear'))
+        model = Sequential([
+                Dense(64, input_shape=(self.state_size,), kernel_initializer='lecun_uniform'),
+                Activation('relu'),
+                Dense(64, kernel_initializer='lecun_uniform'),
+                Activation('relu'),
+                Dropout(0.2),
+                Dense(self.action_size, kernel_initializer='lecun_uniform'),
+        ])
         model.compile(loss='mse', optimizer=RMSprop(lr=self.learning_rate, rho=0.9, epsilon=1e-06))
         model.summary()
 
@@ -150,38 +152,56 @@ class ReinforceAgent():
 
         self.model.fit(X_batch, Y_batch, batch_size=self.batch_size, epochs=1, verbose=0)
 
+
 if __name__ == '__main__':
-    rospy.init_node('turtlebot3_dqn_stage_1')
+    # parser = argparse.ArgumentParser(description="Argumentparser DEscribtion")
+    # parser.add_argument('--stage', action="store", type=str, default="1")
+    # args = parser.parse_args()
+    # stage = args.stage
+    stage = rospy.get_param("/turtlebot3_dqn/stage")
+
+    Env = import_module("src.turtlebot3_dqn.environment_stage_" + stage)
+
+    rospy.init_node('turtlebot3_dqn_stage_'+stage)
+
     pub_result = rospy.Publisher('result', Float32MultiArray, queue_size=5)
     pub_get_action = rospy.Publisher('get_action', Float32MultiArray, queue_size=5)
+
     result = Float32MultiArray()
     get_action = Float32MultiArray()
 
-    state_size = 26
+    state_size = 28
     action_size = 5
 
-    env = Env(action_size)
+    run_id = int(time.time())
+    log_title = "turtlebot3"
+    log, keys = log_utils.setup_logger(log_title, state_size, action_size, goal_dim=2)
+    env = Env.Env(action_size)
+    agent = ReinforceAgent(state_size, action_size, stage)
 
-    agent = ReinforceAgent(state_size, action_size)
     scores, episodes = [], []
     global_step = 0
     start_time = time.time()
     param_keys = ['epsilon', 'episode']
     param_values = [agent.epsilon, agent.load_episode]
     param_dictionary = dict(zip(param_keys, param_values))
-    print(param_dictionary)
 
-
-    for e in range(agent.load_episode + 1, EPISODES):
+    for episode_number in range(agent.load_episode + 1, EPISODES):
         done = False
         state = env.reset()
+        goal = env.getGoal()
         score = 0
-        for t in range(agent.episode_step):
+
+        for episode_step in range(agent.episode_step):
             action = agent.getAction(state)
 
             next_state, reward, done = env.step(action)
 
             agent.appendMemory(state, action, reward, next_state, done)
+            log_utils.make_log_entry(log, log_title, run_id, episode_number,
+                                     episode_step, state, next_state, goal,
+                                     action, agent.q_value,
+                                     reward, done)
 
             if len(agent.memory) >= agent.train_start:
                 if global_step <= agent.target_update:
@@ -194,9 +214,9 @@ if __name__ == '__main__':
             get_action.data = [action, score, reward]
             pub_get_action.publish(get_action)
 
-            if e % 10 == 0 and t == 0:
-                agent.model.save(agent.dirPath + str(e) + '.h5')
-                with open(agent.dirPath + str(e) + '.json', 'w') as outfile:
+            if episode_number % 10 == 0 and episode_step == 0:
+                agent.model.save(agent.dirPath + str(episode_number) + '.h5')
+                with open(agent.dirPath + str(episode_number) + '.json', 'w') as outfile:
                     json.dump(param_dictionary, outfile)
 
                 agent.model.save(agent.dirPath + "latest" + '.h5')
@@ -204,7 +224,7 @@ if __name__ == '__main__':
                     json.dump(param_dictionary, outfile)
                     print("MODEL SAVED", param_dictionary)
 
-            if t >= 500:
+            if episode_step >= 500:
                 rospy.loginfo("Time out!!")
                 done = True
 
@@ -213,20 +233,21 @@ if __name__ == '__main__':
                 pub_result.publish(result)
                 agent.updateTargetModel()
                 scores.append(score)
-                episodes.append(e)
+                episodes.append(episode_number)
                 m, s = divmod(int(time.time() - start_time), 60)
                 h, m = divmod(m, 60)
 
                 rospy.loginfo('Ep: %d score: %.2f memory: %d epsilon: %.2f time: %d:%02d:%02d',
-                              e, score, len(agent.memory), agent.epsilon, h, m, s)
+                              episode_number, score, len(agent.memory), agent.epsilon, h, m, s)
                 param_keys = ['epsilon', 'episode']
-                param_values = [agent.epsilon, e]
+                param_values = [agent.epsilon, episode_number]
                 param_dictionary = dict(zip(param_keys, param_values))
                 break
 
             global_step += 1
             if global_step % agent.target_update == 0:
                 rospy.loginfo("UPDATE TARGET NETWORK")
-
+        log.save(save_to_db=True)
         if agent.epsilon > agent.epsilon_min:
             agent.epsilon *= agent.epsilon_decay
+
