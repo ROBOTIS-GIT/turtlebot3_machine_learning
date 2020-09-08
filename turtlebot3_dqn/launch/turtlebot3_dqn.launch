@@ -3,13 +3,13 @@
   <arg name="her" default="false"/>
   <param name="stage_number"  value="$(arg stage)"/>
 
-  <group if="$(arg('her'))">
+  <group if="$(arg her)">
     <node pkg="turtlebot3_dqn" type="turtlebot3_dqn.py" name="turtlebot3_dqn" output="screen">
       <param name="stage" value="$(arg stage)" type="string" />
     </node>
   </group>
 
-  <group unless="$(arg('her'))">
+  <group unless="$(arg her)">
     <node pkg="turtlebot3_dqn" type="turtlebot3_dqn_her.py" name="turtlebot3_dqn" output="screen">
       <param name="stage" value="$(arg stage)" type="string" />
     </node>
