@@ -25,7 +25,7 @@ class HindsightExperienceReplay:
             transitions = self.sample_transitions(t,T)
             for transition in transitions:
                 self.memory.append(transition)
-        self.episode_replay[]
+        self.episode_replay=[]
 
     def sample_transitions(self, t, T):
         transitions = []
