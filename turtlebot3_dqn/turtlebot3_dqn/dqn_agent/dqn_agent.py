@@ -15,25 +15,51 @@
 # limitations under the License.
 #
 # Authors: Ryan Shim, Gilbert
-
 import collections
-from keras.layers import Activation
-from keras.layers import Dense
-from keras.layers import Dropout
-from keras.models import Sequential
-from keras.models import load_model
-from keras.optimizers import RMSprop
+import datetime
 import json
-import numpy
+import math
 import os
-import random
+import random as rnd
 import sys
 import time
+import numpy as np
 
 import rclpy
 from rclpy.node import Node
-
 from turtlebot3_msgs.srv import Dqn
+from std_srvs.srv import Empty
+
+import tensorflow as tf
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.models import load_model
+from tensorflow.keras.optimizers import Adam
+
+tf.config.set_visible_devices([], 'GPU')
+
+LOGGING = True
+current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+dqn_reward_log_dir = 'logs/gradient_tape/' + current_time + '/dqn_stage4_usual_180_ray_yaw_reward'
+
+
+class DQNMetric(tf.keras.metrics.Metric):
+
+    def __init__(self, name='dqn_metric'):
+        super(DQNMetric, self).__init__(name=name)
+        self.loss = self.add_weight(name='loss', initializer='zeros')
+        self.episode_step = self.add_weight(name='step', initializer='zeros')
+
+    def update_state(self, y_true, y_pred=0, sample_weight=None):
+        self.loss.assign_add(y_true)
+        self.episode_step.assign_add(1)
+
+    def result(self):
+        return self.loss / self.episode_step
+
+    def reset_states(self):
+        self.loss.assign(0)
+        self.episode_step.assign(0)
 
 
 class DQNAgent(Node):
@@ -45,223 +71,243 @@ class DQNAgent(Node):
         ************************************************************"""
         # Stage
         self.stage = int(stage)
-
+        self.train_mode = True
         # State size and action size
-        self.state_size = 4
+        self.state_size = 182  # 180 lidar rays
         self.action_size = 5
-        self.episode_size = 3000
+        self.max_training_episodes = 10003
 
         # DQN hyperparameter
         self.discount_factor = 0.99
-        self.learning_rate = 0.00025
+        self.learning_rate = 0.0007
         self.epsilon = 1.0
-        self.epsilon_decay = 0.99
+        self.step_counter = 0
+        self.epsilon_decay = 20000 * self.stage
         self.epsilon_min = 0.05
-        self.batch_size = 64
-        self.train_start = 64
+        self.batch_size = 128
 
         # Replay memory
-        self.memory = collections.deque(maxlen=1000000)
+        self.replay_memory = collections.deque(maxlen=500000)
+        self.min_replay_memory_size = 5000
 
         # Build model and target model
-        self.model = self.build_model()
-        self.target_model = self.build_model()
+        self.model = self.create_qnetwork()
+        self.target_model = self.create_qnetwork()
         self.update_target_model()
-        self.update_target_model_start = 2000
+        self.update_target_after = 5000
+        self.target_update_after_counter = 0
 
         # Load saved models
         self.load_model = False
         self.load_episode = 0
         self.model_dir_path = os.path.dirname(os.path.realpath(__file__))
-        self.model_dir_path = self.model_dir_path.replace(
-            'turtlebot3_dqn/dqn_agent',
-            'model')
-        self.model_path = os.path.join(
-            self.model_dir_path,
-            'stage'+str(self.stage)+'_episode'+str(self.load_episode)+'.h5')
+        self.model_dir_path = self.model_dir_path.replace('turtlebot3_dqn/dqn_agent', 'model')
+        self.model_path = os.path.join(self.model_dir_path,
+                                       'stage' + str(self.stage) + '_episode' + str(self.load_episode) + '.h5')
 
         if self.load_model:
             self.model.set_weights(load_model(self.model_path).get_weights())
-            with open(os.path.join(
-                    self.model_dir_path,
-                    'stage'+str(self.stage)+'_episode'+str(self.load_episode)+'.json')) as outfile:
+            with open(os.path.join(self.model_dir_path,
+                                   'stage' + str(self.stage) + '_episode' + str(
+                                       self.load_episode) + '.json')) as outfile:
                 param = json.load(outfile)
                 self.epsilon = param.get('epsilon')
+
+        # Tensorboard Log
+        if LOGGING:
+            self.dqn_reward_writer = tf.summary.create_file_writer(dqn_reward_log_dir)
+            self.dqn_reward_metric = DQNMetric()
 
         """************************************************************
         ** Initialise ROS clients
         ************************************************************"""
         # Initialise clients
-        self.dqn_com_client = self.create_client(Dqn, 'dqn_com')
+        self.rl_agent_interface_client = self.create_client(Dqn, 'rl_agent_interface')
+        self.make_environment_client = self.create_client(Empty, 'make_environment')
+        self.reset_environment_client = self.create_client(Dqn, 'reset_environment')
 
         """************************************************************
         ** Start process
         ************************************************************"""
         self.process()
 
-    """*******************************************************************************
-    ** Callback functions and relevant functions
-    *******************************************************************************"""
     def process(self):
-        global_step = 0
+        self.env_make()
+        time.sleep(1.0)
 
-        for episode in range(self.load_episode+1, self.episode_size):
-            global_step += 1
+        episode_num = 0
+
+        for episode in range(self.load_episode + 1, self.max_training_episodes):
+            episode_num += 1
             local_step = 0
-
-            state = list()
-            next_state = list()
-            done = False
-            init = True
             score = 0
 
             # Reset DQN environment
+            state = self.reset_environment()
             time.sleep(1.0)
 
-            while not done:
+            while True:
                 local_step += 1
+                action = int(self.get_action(state))
 
-                # Aciton based on the current state
-                if local_step == 1:
-                    action = 2  # Move forward
-                else:
-                    state = next_state
-                    action = int(self.get_action(state))
+                next_state, reward, done = self.step(action)
+                score += reward
 
-                # Send action and receive next state and reward
-                req = Dqn.Request()
-                print(int(action))
-                req.action = action
-                req.init = init
-                while not self.dqn_com_client.wait_for_service(timeout_sec=1.0):
-                    self.get_logger().info('service not available, waiting again...')
+                if self.train_mode:
+                    self.append_sample((state, action, reward, next_state, done))
+                    self.train_model(done)
 
-                future = self.dqn_com_client.call_async(req)
+                state = next_state
+                if done:
+                    if LOGGING:
+                        self.dqn_reward_metric.update_state(score)
+                        with self.dqn_reward_writer.as_default():
+                            tf.summary.scalar('dqn_reward', self.dqn_reward_metric.result(), step=episode_num)
+                        self.dqn_reward_metric.reset_states()
 
-                while rclpy.ok():
-                    rclpy.spin_once(self)
-                    if future.done():
-                        if future.result() is not None:
-                            # Next state and reward
-                            next_state = future.result().state
-                            reward = future.result().reward
-                            done = future.result().done
-                            score += reward
-                            init = False
-                        else:
-                            self.get_logger().error(
-                                'Exception while calling service: {0}'.format(future.exception()))
-                        break
+                    print(
+                        "Episode:", episode,
+                        "score:", score,
+                        "memory length:", len(self.replay_memory),
+                        "epsilon:", self.epsilon)
 
-                # Save <s, a, r, s'> samples
-                if local_step > 1:
-                    self.append_sample(state, action, reward, next_state, done)
-
-                    # Train model
-                    if global_step > self.update_target_model_start:
-                        self.train_model(True)
-                    elif global_step > self.train_start:
-                        self.train_model()
-
-                    if done:
-                        # Update neural network
-                        self.update_target_model()
-
-                        print(
-                            "Episode:", episode,
-                            "score:", score,
-                            "memory length:", len(self.memory),
-                            "epsilon:", self.epsilon)
-
-                        param_keys = ['epsilon']
-                        param_values = [self.epsilon]
-                        param_dictionary = dict(zip(param_keys, param_values))
+                    param_keys = ['epsilon']
+                    param_values = [self.epsilon]
+                    param_dictionary = dict(zip(param_keys, param_values))
+                    break
 
                 # While loop rate
                 time.sleep(0.01)
 
-            # Update result and save model every 10 episodes
-            if episode % 10 == 0:
-                self.model_path = os.path.join(
-                    self.model_dir_path,
-                    'stage'+str(self.stage)+'_episode'+str(episode)+'.h5')
-                self.model.save(self.model_path)
-                with open(os.path.join(
-                    self.model_dir_path,
-                        'stage'+str(self.stage)+'_episode'+str(episode)+'.json'), 'w') as outfile:
-                    json.dump(param_dictionary, outfile)
+            # Update result and save model every 100 episodes
+            if self.train_mode:
+                if episode % 100 == 0:
+                    self.model_path = os.path.join(
+                        self.model_dir_path,
+                        'stage' + str(self.stage) + '_episode' + str(episode) + '.h5')
+                    self.model.save(self.model_path)
+                    with open(os.path.join(
+                            self.model_dir_path,
+                            'stage' + str(self.stage) + '_episode' + str(episode) + '.json'), 'w') as outfile:
+                        json.dump(param_dictionary, outfile)
 
-            # Epsilon
-            if self.epsilon > self.epsilon_min:
-                self.epsilon *= self.epsilon_decay
+    def env_make(self):
+        while not self.make_environment_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().warn('Environment make client failed to connect to the server, try again ...')
 
-    def build_model(self):
+        self.make_environment_client.call_async(Empty.Request())
+
+    def reset_environment(self):
+        while not self.reset_environment_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().warn('Reset environment client failed to connect to the server, try again ...')
+
+        future = self.reset_environment_client.call_async(Dqn.Request())
+
+        rclpy.spin_until_future_complete(self, future)
+        if future.result() is not None:
+            state = future.result().state
+            state = np.reshape(np.asarray(state), [1, self.state_size])
+        else:
+            self.get_logger().error(
+                'Exception while calling service: {0}'.format(future.exception()))
+
+        return state
+
+    def step(self, action):
+        # Send action and receive next state and reward
+        req = Dqn.Request()
+        req.action = action
+
+        while not self.rl_agent_interface_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('rl_agent interface service not available, waiting again...')
+
+        future = self.rl_agent_interface_client.call_async(req)
+
+        rclpy.spin_until_future_complete(self, future)
+
+        if future.result() is not None:
+            # Next state and reward
+            next_state = future.result().state
+            next_state = np.reshape(np.asarray(next_state), [1, self.state_size])
+            reward = future.result().reward
+            done = future.result().done
+        else:
+            self.get_logger().error(
+                'Exception while calling service: {0}'.format(future.exception()))
+        return next_state, reward, done
+
+    def create_qnetwork(self):
         model = Sequential()
-        model.add(Dense(
-            64,
-            input_shape=(self.state_size,),
-            activation='relu',
-            kernel_initializer='lecun_uniform'))
-        model.add(Dense(64, activation='relu', kernel_initializer='lecun_uniform'))
-        model.add(Dropout(0.2))
-        model.add(Dense(self.action_size, kernel_initializer='lecun_uniform'))
-        model.add(Activation('linear'))
-        model.compile(loss='mse', optimizer=RMSprop(lr=self.learning_rate, rho=0.9, epsilon=1e-06))
+        model.add(Dense(512, input_shape=(self.state_size,), activation='relu'))
+        model.add(Dense(256, activation='relu'))
+        model.add(Dense(128, activation='relu'))
+        model.add(Dense(self.action_size, activation='linear'))
+        model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
         model.summary()
 
         return model
 
     def update_target_model(self):
         self.target_model.set_weights(self.model.get_weights())
+        self.target_update_after_counter = 0
+        print("*Target model updated*")
 
     def get_action(self, state):
-        if numpy.random.rand() <= self.epsilon:
-            return random.randrange(self.action_size)
+        if self.train_mode:
+            self.step_counter += 1
+            self.epsilon = self.epsilon_min + (1.0 - self.epsilon_min) * math.exp(
+                -1.0 * self.step_counter / self.epsilon_decay)
+            lucky = rnd.random()
+            if lucky > (1 - self.epsilon):
+                return rnd.randint(0, self.action_size - 1)
+            else:
+                return np.argmax(self.model.predict(state))
         else:
-            state = numpy.asarray(state)
-            q_value = self.model.predict(state.reshape(1, len(state)))
-            print(numpy.argmax(q_value[0]))
-            return numpy.argmax(q_value[0])
+            return np.argmax(self.model.predict(state))
 
-    def append_sample(self, state, action, reward, next_state, done):
-        self.memory.append((state, action, reward, next_state, done))
+    def append_sample(self, transition):
+        self.replay_memory.append(transition)
 
-    def train_model(self, target_train_start=False):
-        mini_batch = random.sample(self.memory, self.batch_size)
-        x_batch = numpy.empty((0, self.state_size), dtype=numpy.float64)
-        y_batch = numpy.empty((0, self.action_size), dtype=numpy.float64)
+    def train_model(self, terminal):
+        if len(self.replay_memory) < self.min_replay_memory_size:
+            return
+        data_in_mini_batch = rnd.sample(self.replay_memory, self.batch_size)
 
-        for i in range(self.batch_size):
-            state = numpy.asarray(mini_batch[i][0])
-            action = numpy.asarray(mini_batch[i][1])
-            reward = numpy.asarray(mini_batch[i][2])
-            next_state = numpy.asarray(mini_batch[i][3])
-            done = numpy.asarray(mini_batch[i][4])
+        current_states = np.array([transition[0] for transition in data_in_mini_batch])
+        current_states = current_states.squeeze()
+        current_qvalues_list = self.model.predict(current_states)
 
-            q_value = self.model.predict(state.reshape(1, len(state)))
-            self.max_q_value = numpy.max(q_value)
+        next_states = np.array([transition[3] for transition in data_in_mini_batch])
+        next_states = next_states.squeeze()
+        next_qvalues_list = self.target_model.predict(next_states)
 
-            if not target_train_start:
-                target_value = self.model.predict(next_state.reshape(1, len(next_state)))
+        x_train = []
+        y_train = []
+
+        for index, (current_state, action, reward, next_state, done) in enumerate(data_in_mini_batch):
+            if not done:
+                future_reward = np.max(next_qvalues_list[index])
+                desired_q = reward + self.discount_factor * future_reward
             else:
-                target_value = self.target_model.predict(next_state.reshape(1, len(next_state)))
+                desired_q = reward
 
-            if done:
-                next_q_value = reward
-            else:
-                next_q_value = reward + self.discount_factor * numpy.amax(target_value)
+            current_q_values = current_qvalues_list[index]
+            current_q_values[action] = desired_q
 
-            x_batch = numpy.append(x_batch, numpy.array([state.copy()]), axis=0)
+            x_train.append(current_state)
+            y_train.append(current_q_values)
 
-            y_sample = q_value.copy()
-            y_sample[0][action] = next_q_value
-            y_batch = numpy.append(y_batch, numpy.array([y_sample[0]]), axis=0)
+        x_train = np.array(x_train)
+        y_train = np.array(y_train)
+        x_train = np.reshape(x_train, [len(data_in_mini_batch), self.state_size])
+        y_train = np.reshape(y_train, [len(data_in_mini_batch), self.action_size])
 
-            if done:
-                x_batch = numpy.append(x_batch, numpy.array([next_state.copy()]), axis=0)
-                y_batch = numpy.append(y_batch, numpy.array([[reward] * self.action_size]), axis=0)
+        self.model.fit(tf.convert_to_tensor(x_train, tf.float32), tf.convert_to_tensor(y_train, tf.float32),
+                       batch_size=self.batch_size, verbose=0)
+        self.target_update_after_counter += 1
 
-        self.model.fit(x_batch, y_batch, batch_size=self.batch_size, epochs=1, verbose=0)
+        if self.target_update_after_counter > self.update_target_after and terminal:
+            self.update_target_model()
 
 
 def main(args=sys.argv[1]):
