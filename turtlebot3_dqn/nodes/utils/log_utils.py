@@ -4,7 +4,7 @@ import datetime
 import numpy as np
 from logging_script import logger
 
-def setup_logger(title, n_state_vals, action_dim, goal_dim):
+def setup_logger(title, n_state_vals, action_dim, goal_dim, path="/root/cfg/"):
     int_keys = ["run_id", "episode", "step"]
 
     float_keys = ["from_state_" + str(n) for n in range(n_state_vals)]
@@ -30,16 +30,18 @@ def setup_logger(title, n_state_vals, action_dim, goal_dim):
               ["boolean" for _ in range(len(bool_keys))] + \
               ["timestamp" for _ in range(len(time_keys))]
 
+    with open(path + 'db_usr_cfg.json') as json_file:
+        db_usr_cfg = json.load(json_file)
 
     db_config = {
         "database": {
-            "host": "dwh.prd.akw",
-            "user": "lwidowski",
-            "passwd": "$moothOperat0r",
-            "database": "sandbox",
-            "port": "5432"
+            "host": db_usr_cfg["host"],
+            "user": db_usr_cfg["user"],
+            "passwd": db_usr_cfg["passwd"],
+            "database": db_usr_cfg["database"],
+            "port": db_usr_cfg["port"]
         },
-        "schema_name": "lwidowski",
+        "schema_name": db_usr_cfg["schema_name"],
         "table_name": "tb_b_" + title,
         "key_list": keys_,
         "dtype_list": dtypes_,
