@@ -102,3 +102,11 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+
+# own
+*.h5
+*.json
+/docker_setup/backup
+*.idea
+*.log

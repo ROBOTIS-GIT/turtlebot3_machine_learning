@@ -43,11 +43,14 @@ class Env():
         self.unpause_proxy = rospy.ServiceProxy('gazebo/unpause_physics', Empty)
         self.pause_proxy = rospy.ServiceProxy('gazebo/pause_physics', Empty)
         self.respawn_goal = Respawn()
-
+    
+    def getGoal(self):
+        return self.goal_x, self.goal_y
+    
     def getGoalDistace(self):
-        goal_distance = round(math.hypot(self.goal_x - self.position.x, self.goal_y - self.position.y), 2)
+        start_goal_distance = round(math.hypot(self.goal_x - self.position.x, self.goal_y - self.position.y), 2)
 
-        return goal_distance
+        return start_goal_distance
 
     def getOdometry(self, odom):
         self.position = odom.pose.pose.position
@@ -80,26 +83,28 @@ class Env():
             else:
                 scan_range.append(scan.ranges[i])
 
+        obstacle_min_range = round(min(scan_range), 2)
+        obstacle_angle = np.argmin(scan_range)
         if min_range > min(scan_range) > 0:
             done = True
 
-        current_distance = round(math.hypot(self.goal_x - self.position.x, self.goal_y - self.position.y),2)
-        if current_distance < 0.2:
+        current_goal_distance = round(math.hypot(self.goal_x - self.position.x, self.goal_y - self.position.y),2)
+        if current_goal_distance < 0.2:
             self.get_goalbox = True
 
-        return scan_range + [heading, current_distance], done
+        return scan_range + [heading, current_goal_distance, 0, 0], done
 
     def setReward(self, state, done, action):
         yaw_reward = []
-        current_distance = state[-1]
-        heading = state[-2]
+        current_goal_distance = state[-3]
+        heading = state[-4]
 
         for i in range(5):
             angle = -pi / 4 + heading + (pi / 8 * i) + pi / 2
             tr = 1 - 4 * math.fabs(0.5 - math.modf(0.25 + 0.5 * angle % (2 * math.pi) / math.pi)[0])
             yaw_reward.append(tr)
 
-        distance_rate = 2 ** (current_distance / self.goal_distance)
+        distance_rate = 2 ** (current_goal_distance / self.start_goal_distance)
         reward = ((round(yaw_reward[action] * 5, 2)) * distance_rate)
 
         if done:
@@ -112,7 +117,7 @@ class Env():
             reward = 200
             self.pub_cmd_vel.publish(Twist())
             self.goal_x, self.goal_y = self.respawn_goal.getPosition(True, delete=True)
-            self.goal_distance = self.getGoalDistace()
+            self.start_goal_distance = self.getGoalDistace()
             self.get_goalbox = False
 
         return reward
@@ -156,7 +161,7 @@ class Env():
             self.goal_x, self.goal_y = self.respawn_goal.getPosition()
             self.initGoal = False
 
-        self.goal_distance = self.getGoalDistace()
+        self.start_goal_distance = self.getGoalDistace()
         state, done = self.getState(data)
 
         return np.asarray(state)
