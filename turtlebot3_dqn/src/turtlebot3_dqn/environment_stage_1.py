@@ -45,11 +45,13 @@ class Env():
         self.respawn_goal = Respawn()
     
     def getGoal(self):
-        return self.goal_x, self.goal_y
-    
+        return [self.goal_x, self.goal_y]
+
+    def getPosition(self):
+        return [self.position.x, self.position.y]
+
     def getGoalDistace(self):
         start_goal_distance = round(math.hypot(self.goal_x - self.position.x, self.goal_y - self.position.y), 2)
-
         return start_goal_distance
 
     def getOdometry(self, odom):

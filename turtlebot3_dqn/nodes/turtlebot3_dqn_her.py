@@ -16,7 +16,6 @@
 #################################################################################
 
 # Authors: Gilbert #
-import argparse
 
 import rospy
 import os
@@ -29,7 +28,7 @@ import sys
 from utils import log_utils
 
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-from collections import deque
+from hindsight_experience_replay import HindsightExperienceReplay
 from std_msgs.msg import Float32MultiArray
 from keras.models import Sequential, load_model
 from keras.optimizers import RMSprop
@@ -38,9 +37,8 @@ from importlib import import_module
 
 EPISODES = 3000
 
-
 class ReinforceAgent():
-    def __init__(self, state_size, action_size, stage="1"):
+    def __init__(self, state_size, action_size, goal_size, stage="1"):
         self.pub_result = rospy.Publisher('result', Float32MultiArray, queue_size=5)
         self.dirPath = os.path.dirname(os.path.realpath(__file__))
         self.dirPath = self.dirPath.replace('turtlebot3_dqn/nodes', 'turtlebot3_dqn/save_model/stage_' + stage + '_')
@@ -50,6 +48,7 @@ class ReinforceAgent():
         self.load_episode = "latest"
         self.state_size = state_size
         self.action_size = action_size
+        self.goal_size = goal_size
         self.episode_step = 6000
         self.target_update = 2000
         self.discount_factor = 0.99
@@ -59,7 +58,7 @@ class ReinforceAgent():
         self.epsilon_min = 0.05
         self.batch_size = 64
         self.train_start = 64
-        self.memory = deque(maxlen=1000000)
+        self.her = HindsightExperienceReplay(k=1, strategie="future",maxlen=1000000, batch_size=self.batch_size)
 
         self.model = self.buildModel()
         self.target_model = self.buildModel()
@@ -86,7 +85,7 @@ class ReinforceAgent():
         model = Sequential()
         dropout = 0.2
 
-        model.add(Dense(64, input_shape=(self.state_size,), activation='relu', kernel_initializer='lecun_uniform'))
+        model.add(Dense(64, input_shape=(self.state_size+self.goal_size,), activation='relu', kernel_initializer='lecun_uniform'))
 
         model.add(Dense(64, activation='relu', kernel_initializer='lecun_uniform'))
         model.add(Dropout(dropout))
@@ -107,64 +106,67 @@ class ReinforceAgent():
     def updateTargetModel(self):
         self.target_model.set_weights(self.model.get_weights())
 
-    def getAction(self, state):
+    def predict(self, state, goal):
+        features = np.hstack((np.asarray(state).flatten(), np.asarray(goal).flatten()))
+        return self.model.predict(features.reshape(1, len(state)+len(goal)))
+
+    def predict_target(self, state, goal):
+        features = np.hstack((np.asarray(state).flatten(), np.asarray(goal).flatten()))
+        return self.target_model.predict(features.reshape(1, len(state)+len(goal)))
+
+
+    def getAction(self, state, goal):
         if np.random.rand() <= self.epsilon:
             self.q_value = np.zeros(self.action_size)
             return random.randrange(self.action_size)
         else:
-            q_value = self.model.predict(state.reshape(1, len(state)))
+            q_value = self.predict(state, goal)
             self.q_value = q_value
             return np.argmax(q_value[0])
 
-    def appendMemory(self, state, action, reward, next_state, done):
-        self.memory.append((state, action, reward, next_state, done))
-
     def trainModel(self, target=False):
-        mini_batch = random.sample(self.memory, self.batch_size)
-        X_batch = np.empty((0, self.state_size), dtype=np.float64)
+        mini_batch = self.her.sample_memory()
+        X_batch = np.empty((0, self.state_size + self.goal_size), dtype=np.float64)
         Y_batch = np.empty((0, self.action_size), dtype=np.float64)
 
         for i in range(self.batch_size):
             states = mini_batch[i][0]
             actions = mini_batch[i][1]
-            rewards = mini_batch[i][2]
-            next_states = mini_batch[i][3]
-            dones = mini_batch[i][4]
+            goals = mini_batch[i][2]
+            rewards = mini_batch[i][3]
+            next_states = mini_batch[i][4]
+            dones = mini_batch[i][5]
 
-            q_value = self.model.predict(states.reshape(1, len(states)))
+            q_value = self.predict(state, goals)
             self.q_value = q_value
 
             if target:
-                next_target = self.target_model.predict(next_states.reshape(1, len(next_states)))
+                next_target = self.predict_target(next_states, goals)
 
             else:
-                next_target = self.model.predict(next_states.reshape(1, len(next_states)))
+                next_target = q_value = self.predict(next_states, goals)
 
             next_q_value = self.getQvalue(rewards, next_target, dones)
 
-            X_batch = np.append(X_batch, np.array([states.copy()]), axis=0)
+            X_batch = np.append(X_batch, np.asarray([np.hstack((states, goals)).copy()]), axis=0)
             Y_sample = q_value.copy()
 
             Y_sample[0][actions] = next_q_value
             Y_batch = np.append(Y_batch, np.array([Y_sample[0]]), axis=0)
 
             if dones:
-                X_batch = np.append(X_batch, np.array([next_states.copy()]), axis=0)
+                X_batch = np.append(X_batch, np.asarray([np.hstack((next_states, goals)).copy()]), axis=0)
                 Y_batch = np.append(Y_batch, np.array([[rewards] * self.action_size]), axis=0)
 
         self.model.fit(X_batch, Y_batch, batch_size=self.batch_size, epochs=1, verbose=0)
 
 
 if __name__ == '__main__':
-    # parser = argparse.ArgumentParser(description="Argumentparser DEscribtion")
-    # parser.add_argument('--stage', action="store", type=str, default="1")
-    # args = parser.parse_args()
-    # stage = args.stage
     stage = rospy.get_param("/turtlebot3_dqn/stage")
 
     Env = import_module("src.turtlebot3_dqn.environment_stage_" + stage)
 
-    rospy.init_node('turtlebot3_dqn_stage_'+stage)
+    rospy.init_node('turtlebot3_dqn_stage_' + stage)
 
     pub_result = rospy.Publisher('result', Float32MultiArray, queue_size=5)
     pub_get_action = rospy.Publisher('get_action', Float32MultiArray, queue_size=5)
@@ -174,12 +176,13 @@ if __name__ == '__main__':
 
     state_size = 28
     action_size = 5
+    goal_size = 2
 
     run_id = int(time.time())
-    log_title = "turtlebot3"
-    log, keys = log_utils.setup_logger(log_title, state_size, action_size, goal_dim=2)
+    log_title = "turtlebot3_position"
+    log, keys = log_utils.setup_logger(log_title, state_size, action_size, goal_dim=goal_size)
     env = Env.Env(action_size)
-    agent = ReinforceAgent(state_size, action_size, stage)
+    agent = ReinforceAgent(state_size, action_size, goal_size, stage)
 
     scores, episodes = [], []
     global_step = 0
@@ -195,17 +198,17 @@ if __name__ == '__main__':
         score = 0
 
         for episode_step in range(agent.episode_step):
-            action = agent.getAction(state)
+            action = agent.getAction(state, goal)
 
             next_state, reward, done = env.step(action)
-
-            agent.appendMemory(state, action, reward, next_state, done)
+            her_goal = env.getPosition()
+            agent.her.append_episode_replay(state, action, goal, her_goal, reward, next_state, done)
             log_utils.make_log_entry(log, log_title, run_id, episode_number,
-                                     episode_step, state, next_state, goal,
+                                     episode_step, state, next_state, goal, her_goal,
                                      action, agent.q_value,
                                      reward, done)
 
-            if len(agent.memory) >= agent.train_start:
+            if agent.her.n_entrys >= agent.train_start:
                 if global_step <= agent.target_update:
                     agent.trainModel()
                 else:
@@ -240,7 +243,7 @@ if __name__ == '__main__':
                 h, m = divmod(m, 60)
 
                 rospy.loginfo('Ep: %d score: %.2f memory: %d epsilon: %.2f time: %d:%02d:%02d',
-                              episode_number, score, len(agent.memory), agent.epsilon, h, m, s)
+                              episode_number, score, agent.her.n_entrys, agent.epsilon, h, m, s)
                 param_keys = ['epsilon', 'episode']
                 param_values = [agent.epsilon, episode_number]
                 param_dictionary = dict(zip(param_keys, param_values))
@@ -249,7 +252,8 @@ if __name__ == '__main__':
             global_step += 1
             if global_step % agent.target_update == 0:
                 rospy.loginfo("UPDATE TARGET NETWORK")
+
+        agent.her.import_episode()
         log.save(save_to_db=True)
         if agent.epsilon > agent.epsilon_min:
             agent.epsilon *= agent.epsilon_decay
-
