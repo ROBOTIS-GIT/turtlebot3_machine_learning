@@ -1,17 +1,16 @@
 #!/usr/bin/env python
 import datetime
-import json
+
 import numpy as np
 from logging_script import logger
 
-def setup_logger(title, n_state_vals, action_dim, goal_dim):
+def setup_logger(title, n_state_vals, action_dim, goal_dim, path="/root/cfg/"):
     int_keys = ["run_id", "episode", "step"]
 
     float_keys = ["from_state_" + str(n) for n in range(n_state_vals)]
     float_keys += ["to_state_" + str(n) for n in range(n_state_vals)]
     float_keys += ["action"]# ["action_" + str(n) for n in range(1)]
     float_keys += ["goal_" + str(n) for n in range(goal_dim)]
-    float_keys += ["position_" + str(n) for n in range(goal_dim)]
     float_keys += ["q_vals_" + str(n) for n in range(action_dim)]
     float_keys += ["Reward"]
 
@@ -31,16 +30,8 @@ def setup_logger(title, n_state_vals, action_dim, goal_dim):
               ["boolean" for _ in range(len(bool_keys))] + \
               ["timestamp" for _ in range(len(time_keys))]
 
-    with open('/root/cfg/db_usr_cfg.json') as json_file:
+    with open(path + 'db_usr_cfg.json') as json_file:
         db_usr_cfg = json.load(json_file)
-
-    # db_usr_cfg = { #TODO remove this
-    #     "host": "dwh.prd.akw",
-    #     "user": "lwidowski",
-    #     "passwd": "$moothOperat0r",
-    #     "database": "sandbox",
-    #     "port": "5432"
-    # }
 
     db_config = {
         "database": {
@@ -50,7 +41,7 @@ def setup_logger(title, n_state_vals, action_dim, goal_dim):
             "database": db_usr_cfg["database"],
             "port": db_usr_cfg["port"]
         },
-        "schema_name": "lwidowski",
+        "schema_name": db_usr_cfg["schema_name"],
         "table_name": "tb_b_" + title,
         "key_list": keys_,
         "dtype_list": dtypes_,
@@ -63,7 +54,7 @@ def setup_logger(title, n_state_vals, action_dim, goal_dim):
     return log, keys_
 
 def make_log_entry(log, title, run_id, episode_number,
-                   episode_step, from_state, to_state, goal, position,
+                   episode_step, from_state, to_state, goal,
                    action, q_vals,
                    reward, terminal):
     int_vals = [run_id, episode_number, episode_step]
@@ -72,7 +63,6 @@ def make_log_entry(log, title, run_id, episode_number,
     float_vals += np.asarray(to_state).flatten().tolist()
     float_vals += [action] #action.flatten().tolist()
     float_vals += np.asarray(goal).flatten().tolist()
-    float_vals += np.asarray(position).flatten().tolist()
     float_vals += np.asarray(q_vals).flatten().tolist()
     float_vals += [reward]
 
@@ -84,3 +74,4 @@ def make_log_entry(log, title, run_id, episode_number,
 
     vals = int_vals + float_vals + string_vals + bool_vals + time_vals
     log.write_line(vals)
+    
