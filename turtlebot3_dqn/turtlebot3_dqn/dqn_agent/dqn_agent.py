@@ -17,12 +17,12 @@
 # Authors: Ryan Shim, Gilbert
 
 import collections
-from keras.layers import Activation
-from keras.layers import Dense
-from keras.layers import Dropout
-from keras.models import Sequential
-from keras.models import load_model
-from keras.optimizers import RMSprop
+from tensorflow.keras.layers import Activation
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.layers import Dropout
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.models import load_model
+from tensorflow.keras.optimizers import RMSprop
 import json
 import numpy
 import os
