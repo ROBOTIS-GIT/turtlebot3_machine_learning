@@ -20,6 +20,7 @@ import os
 import random
 import sys
 
+from ament_index_python.packages import get_package_share_directory
 from gazebo_msgs.srv import DeleteEntity
 from gazebo_msgs.srv import SpawnEntity
 from geometry_msgs.msg import Pose
@@ -40,10 +41,9 @@ class DQNGazebo(Node):
         self.stage = int(stage)
 
         # Entity 'goal'
-        self.entity_dir_path = os.path.dirname(os.path.realpath(__file__))
-        self.entity_dir_path = self.entity_dir_path.replace(
-            'turtlebot3_machine_learning/turtlebot3_dqn/turtlebot3_dqn/dqn_gazebo',
-            'turtlebot3_simulations/turtlebot3_gazebo/models/turtlebot3_dqn_world/goal_box')
+        self.entity_dir_path = get_package_share_directory('turtlebot3_gazebo')
+        self.entity_dir_path = os.path.join(self.entity_dir_path,
+            'models/turtlebot3_dqn_world/goal_box')
         self.entity_path = os.path.join(self.entity_dir_path, 'model.sdf')
         self.entity = open(self.entity_path, 'r').read()
         self.entity_name = 'goal'
