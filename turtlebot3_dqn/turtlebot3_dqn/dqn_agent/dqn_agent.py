@@ -16,13 +16,24 @@
 #
 # Authors: Ryan Shim, Gilbert
 
+import tensorflow
+TENSORFLOW_MAJOR_VERSION = int(tensorflow.__version__.split('.')[0])
+
 import collections
-from tensorflow.keras.layers import Activation
-from tensorflow.keras.layers import Dense
-from tensorflow.keras.layers import Dropout
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.models import load_model
-from tensorflow.keras.optimizers import RMSprop
+if TENSORFLOW_MAJOR_VERSION >= 2:
+    from tensorflow.keras.layers import Activation
+    from tensorflow.keras.layers import Dense
+    from tensorflow.keras.layers import Dropout
+    from tensorflow.keras.models import Sequential
+    from tensorflow.keras.models import load_model
+    from tensorflow.keras.optimizers import RMSprop
+else:
+    from keras.layers import Activation
+    from keras.layers import Dense
+    from keras.layers import Dropout
+    from keras.models import Sequential
+    from keras.models import load_model
+    from keras.optimizers import RMSprop
 import json
 import numpy
 import os
@@ -206,7 +217,10 @@ class DQNAgent(Node):
         model.add(Dropout(0.2))
         model.add(Dense(self.action_size, kernel_initializer='lecun_uniform'))
         model.add(Activation('linear'))
-        model.compile(loss='mse', optimizer=RMSprop(learning_rate=self.learning_rate, rho=0.9, epsilon=1e-06))
+        if TENSORFLOW_MAJOR_VERSION >= 2:
+            model.compile(loss='mse', optimizer=RMSprop(learning_rate=self.learning_rate, rho=0.9, epsilon=1e-06))
+        else:
+            model.compile(loss='mse', optimizer=RMSprop(lr=self.learning_rate, rho=0.9, epsilon=1e-06))
         model.summary()
 
         return model
