@@ -15,7 +15,12 @@
 # limitations under the License.
 #################################################################################
 
-# Authors: Gilbert #
+# ** Author: khinggan ** 
+# ** Email: khinggan2013@gmail.com **
+
+"""Modification of ROBOTIS turtlebot3_machine_learning algorithm to PyTorch version 
+according to PyTorch Official Tutorial of Reinforcement Learning: https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
+"""
 
 import rospy
 import os
@@ -25,13 +30,57 @@ import random
 import time
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-from collections import deque
+from collections import deque, namedtuple
 from std_msgs.msg import Float32MultiArray
 from src.turtlebot3_dqn.environment_stage_1 import Env
-from keras.models import Sequential, load_model
-from keras.optimizers import RMSprop
-from keras.layers import Dense, Dropout, Activation
 
+import os
+import torch
+from torch import nn
+import torch.optim as optim
+import torch.nn.functional as F
+
+device = (
+    "cuda"
+    if torch.cuda.is_available()
+    else "mps"
+    if torch.backends.mps.is_available()
+    else "cpu"
+)
+print(f"Using {device} device")
+
+Transition = namedtuple('Transition', ('state', 'action', 'reward', 'next_state'))
+
+
+class ReplayMemory(object):
+
+    def __init__(self, capacity):
+        self.memory = deque([], maxlen=capacity)
+
+    def push(self, *args):
+        """Save a transition"""
+        self.memory.append(Transition(*args))
+
+    def sample(self, batch_size):
+        return random.sample(self.memory, batch_size)
+
+    def __len__(self):
+        return len(self.memory)
+
+class DQN(nn.Module):
+
+    def __init__(self, n_observations, n_actions):
+        super(DQN, self).__init__()
+        self.layer1 = nn.Linear(n_observations, 128)
+        self.layer2 = nn.Linear(128, 128)
+        self.layer3 = nn.Linear(128, n_actions)
+
+    # Called with either one element to determine next action, or a batch
+    # during optimization. Returns tensor([[left0exp,right0exp]...]).
+    def forward(self, x):
+        x = F.relu(self.layer1(x))
+        x = F.relu(self.layer2(x))
+        return self.layer3(x)
 
 EPISODES = 3000
 
@@ -55,35 +104,20 @@ class ReinforceAgent():
         self.epsilon_min = 0.05
         self.batch_size = 64
         self.train_start = 64
-        self.memory = deque(maxlen=1000000)
+        self.memory = ReplayMemory(10000)
 
-        self.model = self.buildModel()
-        self.target_model = self.buildModel()
-
+        self.model = DQN(self.state_size, self.action_size).to(device)
+        self.target_model = DQN(self.state_size, self.action_size).to(device)
         self.updateTargetModel()
 
-        if self.load_model:
-            self.model.set_weights(load_model(self.dirPath+str(self.load_episode)+".h5").get_weights())
+        self.optimizer = optim.AdamW(self.model.parameters(), lr=self.learning_rate, amsgrad=True)
 
-            with open(self.dirPath+str(self.load_episode)+'.json') as outfile:
-                param = json.load(outfile)
-                self.epsilon = param.get('epsilon')
+        # if self.load_model:
+        #     self.model.set_weights(load_model(self.dirPath+str(self.load_episode)+".h5").get_weights())
 
-    def buildModel(self):
-        model = Sequential()
-        dropout = 0.2
-
-        model.add(Dense(64, input_shape=(self.state_size,), activation='relu', kernel_initializer='lecun_uniform'))
-
-        model.add(Dense(64, activation='relu', kernel_initializer='lecun_uniform'))
-        model.add(Dropout(dropout))
-
-        model.add(Dense(self.action_size, kernel_initializer='lecun_uniform'))
-        model.add(Activation('linear'))
-        model.compile(loss='mse', optimizer=RMSprop(lr=self.learning_rate, rho=0.9, epsilon=1e-06))
-        model.summary()
-
-        return model
+        #     with open(self.dirPath+str(self.load_episode)+'.json') as outfile:
+        #         param = json.load(outfile)
+        #         self.epsilon = param.get('epsilon')
 
     def getQvalue(self, reward, next_target, done):
         if done:
@@ -92,54 +126,71 @@ class ReinforceAgent():
             return reward + self.discount_factor * np.amax(next_target)
 
     def updateTargetModel(self):
-        self.target_model.set_weights(self.model.get_weights())
+        self.target_model.load_state_dict(self.model.state_dict())
 
     def getAction(self, state):
         if np.random.rand() <= self.epsilon:
-            self.q_value = np.zeros(self.action_size)
-            return random.randrange(self.action_size)
+            return torch.tensor([[random.randrange(self.action_size)]], device=device, dtype=torch.long)
         else:
-            q_value = self.model.predict(state.reshape(1, len(state)))
-            self.q_value = q_value
-            return np.argmax(q_value[0])
+            with torch.no_grad():
+                # t.max(1) will return the largest column value of each row.
+                # second column on max result is index of where max element was
+                # found, so we pick action with the larger expected reward.
+                self.q_value = self.model(state).max(1).indices.view(1, 1)
+                return self.q_value
+            # q_value = self.model(state.reshape(1, len(state)))
+            # self.q_value = q_value
+            # return np.argmax(q_value[0])
 
-    def appendMemory(self, state, action, reward, next_state, done):
-        self.memory.append((state, action, reward, next_state, done))
+    def appendMemory(self, state, action, reward, next_state):
+        self.memory.push(state, action, reward, next_state)
 
-    def trainModel(self, target=False):
-        mini_batch = random.sample(self.memory, self.batch_size)
-        X_batch = np.empty((0, self.state_size), dtype=np.float64)
-        Y_batch = np.empty((0, self.action_size), dtype=np.float64)
+    def trainModel(self):
+        if self.memory.__len__() < self.batch_size:
+            return
+        transitions = self.memory.sample(self.batch_size)
+        # Transpose the batch (see https://stackoverflow.com/a/19343/3343043 for
+        # detailed explanation). This converts batch-array of Transitions
+        # to Transition of batch-arrays.
+        batch = Transition(*zip(*transitions))
 
-        for i in range(self.batch_size):
-            states = mini_batch[i][0]
-            actions = mini_batch[i][1]
-            rewards = mini_batch[i][2]
-            next_states = mini_batch[i][3]
-            dones = mini_batch[i][4]
+        # Compute a mask of non-final states and concatenate the batch elements
+        # (a final state would've been the one after which simulation ended)
+        # non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,batch.next_state)), device=device, dtype=torch.bool)
+        # non_final_next_states = torch.cat([s for s in batch.next_state if s is not None])
 
-            q_value = self.model.predict(states.reshape(1, len(states)))
-            self.q_value = q_value
+        state_batch = torch.cat(batch.state)
+        action_batch = torch.cat(batch.action)
+        reward_batch = torch.cat(batch.reward)
+        next_state_batch = torch.cat(batch.next_state)
 
-            if target:
-                next_target = self.target_model.predict(next_states.reshape(1, len(next_states)))
+        # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
+        # columns of actions taken. These are the actions which would've been taken
+        # for each batch state according to policy_net
+        state_action_values = self.model(state_batch).gather(1, action_batch)
 
-            else:
-                next_target = self.model.predict(next_states.reshape(1, len(next_states)))
+        # Compute V(s_{t+1}) for all next states.
+        # Expected values of actions for non_final_next_states are computed based
+        # on the "older" target_net; selecting their best reward with max(1).values
+        # This is merged based on the mask, such that we'll have either the expected
+        # state value or 0 in case the state was final.
+        # next_state_values = torch.zeros(self.batch_size, device=device)
+        next_state_values = self.target_model(next_state_batch).max(1).values
+        # with torch.no_grad():
+        #     next_state_values[non_final_mask] = self.target_model(non_final_next_states).max(1).values
+        # Compute the expected Q values
+        expected_state_action_values = (next_state_values * self.discount_factor) + reward_batch
 
-            next_q_value = self.getQvalue(rewards, next_target, dones)
+        # Compute Huber loss
+        criterion = nn.SmoothL1Loss()
+        loss = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
 
-            X_batch = np.append(X_batch, np.array([states.copy()]), axis=0)
-            Y_sample = q_value.copy()
-
-            Y_sample[0][actions] = next_q_value
-            Y_batch = np.append(Y_batch, np.array([Y_sample[0]]), axis=0)
-
-            if dones:
-                X_batch = np.append(X_batch, np.array([next_states.copy()]), axis=0)
-                Y_batch = np.append(Y_batch, np.array([[rewards] * self.action_size]), axis=0)
-
-        self.model.fit(X_batch, Y_batch, batch_size=self.batch_size, epochs=1, verbose=0)
+        # Optimize the model
+        self.optimizer.zero_grad()
+        loss.backward()
+        # In-place gradient clipping
+        torch.nn.utils.clip_grad_value_(self.model.parameters(), 100)
+        self.optimizer.step()
 
 if __name__ == '__main__':
     rospy.init_node('turtlebot3_dqn_stage_1')
@@ -161,36 +212,41 @@ if __name__ == '__main__':
     for e in range(agent.load_episode + 1, EPISODES):
         done = False
         state = env.reset()
+        state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
         score = 0
         for t in range(agent.episode_step):
             action = agent.getAction(state)
 
             next_state, reward, done = env.step(action)
 
-            agent.appendMemory(state, action, reward, next_state, done)
+            reward = torch.tensor([reward], device=device)
+            next_state = torch.tensor(next_state, dtype=torch.float32, device=device).unsqueeze(0)
 
-            if len(agent.memory) >= agent.train_start:
-                if global_step <= agent.target_update:
-                    agent.trainModel()
-                else:
-                    agent.trainModel(True)
+            agent.appendMemory(state, action, reward, next_state)
 
+            # if len(agent.memory) >= agent.train_start:
+            #     if global_step <= agent.target_update:
+            #         agent.trainModel()
+            #     else:
+            #         agent.trainModel(True)
+            agent.trainModel()
             score += reward
             state = next_state
             get_action.data = [action, score, reward]
             pub_get_action.publish(get_action)
 
-            if e % 10 == 0:
-                agent.model.save(agent.dirPath + str(e) + '.h5')
-                with open(agent.dirPath + str(e) + '.json', 'w') as outfile:
-                    json.dump(param_dictionary, outfile)
+            if e % 100 == 0:
+                rospy.loginfo("Save mode after {} episodes".format(e))
+                # agent.model.save(agent.dirPath + str(e) + '.h5')
+                # with open(agent.dirPath + str(e) + '.json', 'w') as outfile:
+                #     json.dump(param_dictionary, outfile)
 
             if t >= 500:
                 rospy.loginfo("Time out!!")
                 done = True
 
             if done:
-                result.data = [score, np.max(agent.q_value)]
+                result.data = [score]  # original version: result.data = [score, np.max(agent.q_value)]
                 pub_result.publish(result)
                 agent.updateTargetModel()
                 scores.append(score)

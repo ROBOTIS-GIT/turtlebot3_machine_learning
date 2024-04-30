@@ -43,3 +43,11 @@
 - [Website for TurtleBot Series](http://www.turtlebot.com/)
 - [e-Book for TurtleBot3](https://community.robotsource.org/t/download-the-ros-robot-programming-book-for-free/51/)
 - [Videos for TurtleBot3](https://www.youtube.com/playlist?list=PLRG6WP3c31_XI3wlvHlx2Mp8BYqgqDURU)
+
+## Chnage into PyTorch Version
+
+> respawnGola.py, modelPath changed into absolute path, fix it in future.
+
+New a `catkin_ws` for turtlebot3
+
+Not that `gazebo_ros` not work which is installed from `apt`. Build it from source. (When building, install all needed packages from the build error)
