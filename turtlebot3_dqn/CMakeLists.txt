@@ -7,12 +7,22 @@ project(turtlebot3_dqn)
 ################################################################################
 # Find catkin packages and libraries for catkin and system dependencies
 ################################################################################
-find_package(catkin REQUIRED COMPONENTS rospy)
+find_package(catkin REQUIRED COMPONENTS rospy roscpp std_msgs message_generation)
+
+add_service_files(
+  FILES
+  PtModel.srv
+)
 
 ################################################################################
 # Setup for python modules and scripts
 ################################################################################
 catkin_python_setup()
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
 
 ################################################################################
 # Declare ROS messages, services and actions
@@ -26,13 +36,15 @@ catkin_python_setup()
 # Declare catkin specific configuration to be passed to dependent projects
 ################################################################################
 catkin_package(
-  CATKIN_DEPENDS rospy
+  CATKIN_DEPENDS roscpp rospy std_msgs message_runtime
 )
 
 ################################################################################
 # Build
 ################################################################################
-
+include_directories(
+  ${catkin_INCLUDE_DIRS}
+)
 ################################################################################
 # Install
 ################################################################################
@@ -51,6 +63,7 @@ catkin_install_python(PROGRAMS
   src/${PROJECT_NAME}/environment_stage_3.py
   src/${PROJECT_NAME}/environment_stage_4.py
   src/${PROJECT_NAME}/respawnGoal.py
+  nodes/upload_model.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

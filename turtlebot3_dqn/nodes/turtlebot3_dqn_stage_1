@@ -33,6 +33,8 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from collections import deque, namedtuple
 from std_msgs.msg import Float32MultiArray
 from src.turtlebot3_dqn.environment_stage_1 import Env
+from turtlebot3_dqn.srv import PtModel,PtModelRequest
+import pickle
 
 import os
 import torch
@@ -191,6 +193,26 @@ class ReinforceAgent():
         # In-place gradient clipping
         torch.nn.utils.clip_grad_value_(self.model.parameters(), 100)
         self.optimizer.step()
+    
+    def uploadModel(self):
+        rospy.wait_for_service('get_model_upload')
+        
+        model_dict = self.model.state_dict()
+        for key, value in model_dict.items():
+            print(key, value.size())
+
+        # Serializing the OrderedDict to bytes
+        serial_model = pickle.dumps(model_dict)
+
+        req = PtModelRequest()
+        req.req = serial_model
+
+        try:
+            client = rospy.ServiceProxy('get_model_upload', PtModel)
+            resp = client(req)
+            rospy.loginfo("The response data is: %s", resp)
+        except rospy.ServiceException as e:
+            print("Service call failed: %s"%e)
 
 if __name__ == '__main__':
     rospy.init_node('turtlebot3_dqn_stage_1')
@@ -241,6 +263,8 @@ if __name__ == '__main__':
                 # with open(agent.dirPath + str(e) + '.json', 'w') as outfile:
                 #     json.dump(param_dictionary, outfile)
 
+                #######################upload model to server#######################
+
             if t >= 500:
                 rospy.loginfo("Time out!!")
                 done = True
@@ -259,6 +283,10 @@ if __name__ == '__main__':
                 param_keys = ['epsilon']
                 param_values = [agent.epsilon]
                 param_dictionary = dict(zip(param_keys, param_values))
+
+                ######################test: Upload model in here######################
+                agent.uploadModel()
+
                 break
 
             global_step += 1
