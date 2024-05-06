@@ -12,6 +12,8 @@ find_package(catkin REQUIRED COMPONENTS rospy roscpp std_msgs message_generation
 add_service_files(
   FILES
   PtModel.srv
+  C2SPtModel.srv
+  S2CPtModel.srv
 )
 
 ################################################################################

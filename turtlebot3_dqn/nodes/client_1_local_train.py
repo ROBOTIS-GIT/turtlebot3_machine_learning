@@ -33,7 +33,9 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from collections import deque, namedtuple
 from std_msgs.msg import Float32MultiArray
 from src.turtlebot3_dqn.environment_stage_1 import Env
-from turtlebot3_dqn.srv import PtModel,PtModelRequest
+# from turtlebot3_dqn.srv import PtModel,PtModelRequest, PtModelResponse
+from turtlebot3_dqn.srv import S2CPtModel, S2CPtModelRequest, S2CPtModelResponse
+from turtlebot3_dqn.srv import C2SPtModel, C2SPtModelRequest, C2SPtModelResponse
 import pickle
 
 import os
@@ -42,6 +44,10 @@ from torch import nn
 import torch.optim as optim
 import torch.nn.functional as F
 
+import threading
+
+
+# Global Variables
 device = (
     "cuda"
     if torch.cuda.is_available()
@@ -53,6 +59,8 @@ print(f"Using {device} device")
 
 Transition = namedtuple('Transition', ('state', 'action', 'reward', 'next_state'))
 
+EPISODES = 30
+CLIENT_ID = 1
 
 class ReplayMemory(object):
 
@@ -84,8 +92,6 @@ class DQN(nn.Module):
         x = F.relu(self.layer2(x))
         return self.layer3(x)
 
-EPISODES = 3000
-
 class ReinforceAgent():
     def __init__(self, state_size, action_size):
         self.pub_result = rospy.Publisher('result', Float32MultiArray, queue_size=5)
@@ -109,8 +115,6 @@ class ReinforceAgent():
         self.memory = ReplayMemory(10000)
 
         self.model = DQN(self.state_size, self.action_size).to(device)
-        # with open('filename.pickle', 'wb') as handle:
-        #     pickle.dump(self.model.state_dict(), handle, protocol=pickle.HIGHEST_PROTOCOL)
         self.target_model = DQN(self.state_size, self.action_size).to(device)
         self.updateTargetModel()
 
@@ -206,18 +210,24 @@ class ReinforceAgent():
         # Serializing the OrderedDict to bytes
         serial_model = pickle.dumps(model_dict)
 
-        req = PtModelRequest()
+        req = C2SPtModelRequest()
         req.req = serial_model
+        req.cid = CLIENT_ID
 
         try:
-            client = rospy.ServiceProxy('get_model_upload', PtModel)
+            client = rospy.ServiceProxy('get_model_upload', C2SPtModel)
             resp = client(req)
             rospy.loginfo("The response data is: %s", resp)
         except rospy.ServiceException as e:
             print("Service call failed: %s"%e)
 
-if __name__ == '__main__':
-    rospy.init_node('turtlebot3_dqn_stage_1')
+
+def start_train(global_model):
+    model_dict = pickle.loads(global_model)
+    for key, value in model_dict.items():
+        print(key, value.size())
+    
+    print("Start Local Train on Client {}".format(CLIENT_ID))
     pub_result = rospy.Publisher('result', Float32MultiArray, queue_size=5)
     pub_get_action = rospy.Publisher('get_action', Float32MultiArray, queue_size=5)
     result = Float32MultiArray()
@@ -231,8 +241,9 @@ if __name__ == '__main__':
     agent = ReinforceAgent(state_size, action_size)
     scores, episodes = [], []
     global_step = 0
-    start_time = time.time()
 
+    # start train EPISODES episodes
+    start_time = time.time()
     for e in range(agent.load_episode + 1, EPISODES):
         done = False
         state = env.reset()
@@ -248,11 +259,6 @@ if __name__ == '__main__':
 
             agent.appendMemory(state, action, reward, next_state)
 
-            # if len(agent.memory) >= agent.train_start:
-            #     if global_step <= agent.target_update:
-            #         agent.trainModel()
-            #     else:
-            #         agent.trainModel(True)
             agent.trainModel()
             score += reward
             state = next_state
@@ -297,3 +303,23 @@ if __name__ == '__main__':
 
         if agent.epsilon > agent.epsilon_min:
             agent.epsilon *= agent.epsilon_decay
+
+
+def handle_local_train(request):
+    thread = threading.Thread(target=start_train, args=(request.req,))
+    thread.start()
+
+    response = S2CPtModelResponse(True if request.req else False)
+
+    return response
+
+
+def client_local_train():
+    rospy.init_node('client_{}_local_train'.format(CLIENT_ID))
+
+    s = rospy.Service('client_{}_local_train_service'.format(CLIENT_ID), S2CPtModel, handle_local_train)
+    print("Client {} Train global model".format(CLIENT_ID))
+    rospy.spin()
+
+if __name__ == '__main__':
+    client_local_train()

@@ -1,0 +1,5 @@
+uint8[] req
+int32 cid
+int32 round
+---
+bool resp
