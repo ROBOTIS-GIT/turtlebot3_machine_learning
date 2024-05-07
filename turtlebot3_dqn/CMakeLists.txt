@@ -14,6 +14,7 @@ add_service_files(
   PtModel.srv
   C2SPtModel.srv
   S2CPtModel.srv
+  LocalTrain.srv
 )
 
 ################################################################################

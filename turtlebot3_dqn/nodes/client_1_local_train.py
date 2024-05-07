@@ -36,6 +36,7 @@ from src.turtlebot3_dqn.environment_stage_1 import Env
 # from turtlebot3_dqn.srv import PtModel,PtModelRequest, PtModelResponse
 from turtlebot3_dqn.srv import S2CPtModel, S2CPtModelRequest, S2CPtModelResponse
 from turtlebot3_dqn.srv import C2SPtModel, C2SPtModelRequest, C2SPtModelResponse
+from turtlebot3_dqn.srv import LocalTrain, LocalTrainRequest, LocalTrainResponse
 import pickle
 
 import os
@@ -59,8 +60,11 @@ print(f"Using {device} device")
 
 Transition = namedtuple('Transition', ('state', 'action', 'reward', 'next_state'))
 
-EPISODES = 30
+EPISODES = 2
 CLIENT_ID = 1
+state_size = 26
+action_size = 5
+env = Env(action_size)
 
 class ReplayMemory(object):
 
@@ -227,16 +231,13 @@ def start_train(global_model):
     for key, value in model_dict.items():
         print(key, value.size())
     
+    # Initialize agent model with global model dict
+
     print("Start Local Train on Client {}".format(CLIENT_ID))
     pub_result = rospy.Publisher('result', Float32MultiArray, queue_size=5)
     pub_get_action = rospy.Publisher('get_action', Float32MultiArray, queue_size=5)
     result = Float32MultiArray()
     get_action = Float32MultiArray()
-
-    state_size = 26
-    action_size = 5
-
-    env = Env(action_size)
 
     agent = ReinforceAgent(state_size, action_size)
     scores, episodes = [], []
@@ -293,7 +294,7 @@ def start_train(global_model):
                 param_dictionary = dict(zip(param_keys, param_values))
 
                 ######################test: Upload model in here######################
-                agent.uploadModel()
+                # agent.uploadModel()
 
                 break
 
@@ -303,21 +304,29 @@ def start_train(global_model):
 
         if agent.epsilon > agent.epsilon_min:
             agent.epsilon *= agent.epsilon_decay
+    
+    state = env.reset()
+    end_time = time.time()
 
+    print("Total Train Time on client {} is : {} seconds".format(CLIENT_ID, end_time - start_time))
+    compressed_model_dict = pickle.dumps(agent.model.state_dict())
+    return compressed_model_dict
 
 def handle_local_train(request):
-    thread = threading.Thread(target=start_train, args=(request.req,))
-    thread.start()
+    trained_model_dict = start_train(request.req)
 
-    response = S2CPtModelResponse(True if request.req else False)
+    response = LocalTrainResponse()
 
+    response.resp = trained_model_dict
+    response.cid = CLIENT_ID
+    response.round = request.round
     return response
 
 
 def client_local_train():
     rospy.init_node('client_{}_local_train'.format(CLIENT_ID))
 
-    s = rospy.Service('client_{}_local_train_service'.format(CLIENT_ID), S2CPtModel, handle_local_train)
+    s = rospy.Service('client_{}_local_train_service'.format(CLIENT_ID), LocalTrain, handle_local_train)
     print("Client {} Train global model".format(CLIENT_ID))
     rospy.spin()
 
