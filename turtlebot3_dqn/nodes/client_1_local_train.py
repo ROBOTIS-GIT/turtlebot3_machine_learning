@@ -231,10 +231,6 @@ def start_train(global_model_dict):
     model_dict = pickle.loads(global_model_dict)
     for key, value in model_dict.items():
         print(key, value.size())
-    
-    # Initialize agent model with global model dict
-    agent.model.load_state_dict(model_dict)
-    agent.updateTargetModel()
 
     print("Start Local Train on Client {}".format(CLIENT_ID))
     pub_result = rospy.Publisher('result', Float32MultiArray, queue_size=5)
@@ -243,6 +239,11 @@ def start_train(global_model_dict):
     get_action = Float32MultiArray()
 
     agent = ReinforceAgent(state_size, action_size)
+
+    # Initialize agent model with global model dict
+    agent.model.load_state_dict(model_dict)
+    agent.updateTargetModel()
+    
     scores, episodes = [], []
     global_step = 0
 
