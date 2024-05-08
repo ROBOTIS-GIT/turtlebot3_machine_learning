@@ -227,12 +227,14 @@ class ReinforceAgent():
             print("Service call failed: %s"%e)
 
 
-def start_train(global_model):
-    model_dict = pickle.loads(global_model)
+def start_train(global_model_dict):
+    model_dict = pickle.loads(global_model_dict)
     for key, value in model_dict.items():
         print(key, value.size())
     
     # Initialize agent model with global model dict
+    agent.model.load_state_dict(model_dict)
+    agent.updateTargetModel()
 
     print("Start Local Train on Client {}".format(CLIENT_ID))
     pub_result = rospy.Publisher('result', Float32MultiArray, queue_size=5)
