@@ -59,6 +59,7 @@ catkin_install_python(PROGRAMS
   nodes/result_graph
   nodes/action_graph
   nodes/moving_obstacle
+  nodes/save_result.py
   nodes/combination_obstacle_1
   nodes/combination_obstacle_2
   src/${PROJECT_NAME}/environment_stage_1.py
