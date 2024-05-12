@@ -61,7 +61,7 @@ print(f"Using {device} device")
 
 Transition = namedtuple('Transition', ('state', 'action', 'reward', 'next_state'))
 
-EPISODES = 2
+EPISODES = 10
 CLIENT_ID = 1
 state_size = 26
 action_size = 5
