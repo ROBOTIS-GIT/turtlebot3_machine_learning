@@ -31,7 +31,7 @@ import time
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from collections import deque, namedtuple
-from std_msgs.msg import Float32MultiArray
+from std_msgs.msg import Float64
 from src.turtlebot3_dqn.environment_stage_1 import Env
 # from turtlebot3_dqn.srv import PtModel,PtModelRequest, PtModelResponse
 from turtlebot3_dqn.srv import S2CPtModel, S2CPtModelRequest, S2CPtModelResponse
@@ -61,6 +61,7 @@ print(f"Using {device} device")
 
 Transition = namedtuple('Transition', ('state', 'action', 'reward', 'next_state'))
 
+# need to change EPISODES, CLIENT_ID
 EPISODES = 10
 CLIENT_ID = 2
 state_size = 26
@@ -99,11 +100,6 @@ class DQN(nn.Module):
 
 class ReinforceAgent():
     def __init__(self, state_size, action_size):
-        self.pub_result = rospy.Publisher('result', Float32MultiArray, queue_size=5)
-        self.dirPath = os.path.dirname(os.path.realpath(__file__))
-        self.dirPath = self.dirPath.replace('turtlebot3_dqn/nodes', 'turtlebot3_dqn/save_model/stage_1_')
-        self.result = Float32MultiArray()
-
         self.load_model = False
         self.load_episode = 0
         self.state_size = state_size
@@ -227,16 +223,15 @@ class ReinforceAgent():
             print("Service call failed: %s"%e)
 
 
-def start_train(global_model_dict):
+def start_train(request):
+    global_model_dict = request.req
     model_dict = pickle.loads(global_model_dict)
     for key, value in model_dict.items():
         print(key, value.size())
 
     print("Start Local Train on Client {}".format(CLIENT_ID))
-    pub_result = rospy.Publisher('result', Float32MultiArray, queue_size=5)
-    pub_get_action = rospy.Publisher('get_action', Float32MultiArray, queue_size=5)
-    result = Float32MultiArray()
-    get_action = Float32MultiArray()
+    pub_result = rospy.Publisher('/result', Float64, queue_size=5)
+    result = Float64()
 
     agent = ReinforceAgent(state_size, action_size)
 
@@ -267,8 +262,6 @@ def start_train(global_model_dict):
             agent.trainModel()
             score += reward
             state = next_state
-            get_action.data = [action, score, reward]
-            pub_get_action.publish(get_action)
 
             if e % 100 == 0:
                 rospy.loginfo("Save mode after {} episodes".format(e))
@@ -283,7 +276,7 @@ def start_train(global_model_dict):
                 done = True
 
             if done:
-                result.data = [score]  # original version: result.data = [score, np.max(agent.q_value)]
+                result.data = score  # original version: result.data = [score, np.max(agent.q_value)]
                 pub_result.publish(result)
                 agent.updateTargetModel()
                 scores.append(score)
@@ -317,7 +310,7 @@ def start_train(global_model_dict):
     return compressed_model_dict
 
 def handle_local_train(request):
-    trained_model_dict = start_train(request.req)
+    trained_model_dict = start_train(request)
 
     response = LocalTrainResponse()
 
