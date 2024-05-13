@@ -34,6 +34,8 @@ from collections import deque, namedtuple
 from std_msgs.msg import Float64
 from src.turtlebot3_dqn.environment_stage_1 import Env
 # from turtlebot3_dqn.srv import PtModel,PtModelRequest, PtModelResponse
+from turtlebot3_dqn.srv import S2CPtModel, S2CPtModelRequest, S2CPtModelResponse
+from turtlebot3_dqn.srv import C2SPtModel, C2SPtModelRequest, C2SPtModelResponse
 from turtlebot3_dqn.srv import LocalTrain, LocalTrainRequest, LocalTrainResponse
 import pickle
 
@@ -58,7 +60,7 @@ print(f"Using {device} device")
 Transition = namedtuple('Transition', ('state', 'action', 'reward', 'next_state'))
 
 # need to change EPISODES, CLIENT_ID
-EPISODES = 2
+EPISODES = 11
 CLIENT_ID = 1
 state_size = 26
 action_size = 5

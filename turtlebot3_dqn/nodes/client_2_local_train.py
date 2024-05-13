@@ -34,8 +34,6 @@ from collections import deque, namedtuple
 from std_msgs.msg import Float64
 from src.turtlebot3_dqn.environment_stage_1 import Env
 # from turtlebot3_dqn.srv import PtModel,PtModelRequest, PtModelResponse
-from turtlebot3_dqn.srv import S2CPtModel, S2CPtModelRequest, S2CPtModelResponse
-from turtlebot3_dqn.srv import C2SPtModel, C2SPtModelRequest, C2SPtModelResponse
 from turtlebot3_dqn.srv import LocalTrain, LocalTrainRequest, LocalTrainResponse
 import pickle
 
@@ -44,8 +42,6 @@ import torch
 from torch import nn
 import torch.optim as optim
 import torch.nn.functional as F
-
-import threading
 
 
 # Global Variables
@@ -62,7 +58,7 @@ print(f"Using {device} device")
 Transition = namedtuple('Transition', ('state', 'action', 'reward', 'next_state'))
 
 # need to change EPISODES, CLIENT_ID
-EPISODES = 10
+EPISODES = 2
 CLIENT_ID = 2
 state_size = 26
 action_size = 5
@@ -105,7 +101,7 @@ class ReinforceAgent():
         self.state_size = state_size
         self.action_size = action_size
         self.episode_step = 6000
-        self.target_update = 2000
+        self.target_update = 300
         self.discount_factor = 0.99
         self.learning_rate = 0.00025
         self.epsilon = 1.0
@@ -200,40 +196,18 @@ class ReinforceAgent():
         # In-place gradient clipping
         torch.nn.utils.clip_grad_value_(self.model.parameters(), 100)
         self.optimizer.step()
-    
-    def uploadModel(self):
-        rospy.wait_for_service('get_model_upload')
-        
-        model_dict = self.model.state_dict()
-        for key, value in model_dict.items():
-            print(key, value.size())
 
-        # Serializing the OrderedDict to bytes
-        serial_model = pickle.dumps(model_dict)
-
-        req = C2SPtModelRequest()
-        req.req = serial_model
-        req.cid = CLIENT_ID
-
-        try:
-            client = rospy.ServiceProxy('get_model_upload', C2SPtModel)
-            resp = client(req)
-            rospy.loginfo("The response data is: %s", resp)
-        except rospy.ServiceException as e:
-            print("Service call failed: %s"%e)
-
+pub_result = rospy.Publisher('/result', Float64, queue_size=5)
+result = Float64()
+agent = ReinforceAgent(state_size, action_size)
 
 def start_train(request):
     global_model_dict = request.req
     model_dict = pickle.loads(global_model_dict)
-    for key, value in model_dict.items():
-        print(key, value.size())
+    # for key, value in model_dict.items():
+    #     print(key, value.size())
 
-    print("Start Local Train on Client {}".format(CLIENT_ID))
-    pub_result = rospy.Publisher('/result', Float64, queue_size=5)
-    result = Float64()
-
-    agent = ReinforceAgent(state_size, action_size)
+    print("Client {} Round {}".format(CLIENT_ID, request.round))
 
     # Initialize agent model with global model dict
     agent.model.load_state_dict(model_dict)
@@ -244,7 +218,7 @@ def start_train(request):
 
     # start train EPISODES episodes
     start_time = time.time()
-    for e in range(agent.load_episode + 1, EPISODES):
+    for e in range(agent.load_episode, EPISODES):
         done = False
         state = env.reset()
         state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
@@ -263,14 +237,6 @@ def start_train(request):
             score += reward
             state = next_state
 
-            if e % 100 == 0:
-                rospy.loginfo("Save mode after {} episodes".format(e))
-                # agent.model.save(agent.dirPath + str(e) + '.h5')
-                # with open(agent.dirPath + str(e) + '.json', 'w') as outfile:
-                #     json.dump(param_dictionary, outfile)
-
-                #######################upload model to server#######################
-
             if t >= 500:
                 rospy.loginfo("Time out!!")
                 done = True
@@ -286,13 +252,6 @@ def start_train(request):
 
                 rospy.loginfo('Ep: %d score: %.2f memory: %d epsilon: %.2f time: %d:%02d:%02d',
                               e, score, len(agent.memory), agent.epsilon, h, m, s)
-                param_keys = ['epsilon']
-                param_values = [agent.epsilon]
-                param_dictionary = dict(zip(param_keys, param_values))
-
-                ######################test: Upload model in here######################
-                # agent.uploadModel()
-
                 break
 
             global_step += 1
