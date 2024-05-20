@@ -102,4 +102,6 @@ venv.bak/
 
 # mypy
 .mypy_cache/
-turtlebot3_dqn/data.csv
+
+turtlebot3_dqn/data/
+turtlebot3_dqn/plots/
