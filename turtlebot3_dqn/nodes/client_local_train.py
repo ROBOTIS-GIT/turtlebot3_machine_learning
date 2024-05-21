@@ -60,8 +60,9 @@ print(f"Using {device} device")
 Transition = namedtuple('Transition', ('state', 'action', 'reward', 'next_state'))
 
 # Default values, can be modified by config.yaml
-EPISODES = 10
+EPISODES = 2
 CLIENT_ID = 1
+ROUND = 2
 
 project_path = "/home/khinggan/my_research/ros_frl"
 file_path = project_path + '/config.yaml'
@@ -74,10 +75,12 @@ config_type = config.get('type')
 if config_type == 'FRL':
     frl_config = config.get('frl', {})
     EPISODES = frl_config.get('local_episode')
+    ROUND = frl_config.get('round')
     CLIENT_ID = int(frl_config.get('curr_client'))
 elif config_type == 'RL':
     rl_config = config.get('rl', {})
     EPISODES = rl_config.get('local_episode')
+    ROUND = rl_config.get('round')
     CLIENT_ID = int(rl_config.get('curr_client'))
 else:
     print("Invalid type specified in the config file.")
@@ -307,12 +310,12 @@ def start_train(request):
     end_time = time.time()
 
     if config_type == 'FRL':
-        with open(project_path + "/ros1_ws/src/turtlebot3_machine_learning/turtlebot3_dqn/data/{}_ep_{}_round_{}.csv".format(config_type, EPISODES,  request.round), 'a') as d:
+        with open(project_path + "/ros1_ws/src/turtlebot3_machine_learning/turtlebot3_dqn/data/{}_ep_{}_round_{}.csv".format(config_type, EPISODES,  ROUND), 'a') as d:
             writer = csv.writer(d)
             writer.writerows([item for item in zip(scores, episodes, memory_lens, epsilons, episode_hours, episode_minutes, episode_seconds, collisions, goals)])
             print([item for item in zip(scores, episodes, memory_lens, epsilons, episode_hours, episode_minutes, episode_seconds, collisions, goals)])
     elif config_type == 'RL':
-        with open(project_path + "/ros1_ws/src/turtlebot3_machine_learning/turtlebot3_dqn/data/{}_ep_{}_round_{}.csv".format(config_type, EPISODES, request.round), 'a') as d:
+        with open(project_path + "/ros1_ws/src/turtlebot3_machine_learning/turtlebot3_dqn/data/{}_ep_{}_round_{}.csv".format(config_type, EPISODES, ROUND), 'a') as d:
             writer = csv.writer(d)
             writer.writerows([item for item in zip(scores, episodes, memory_lens, epsilons, episode_hours, episode_minutes, episode_seconds, collisions, goals)])
             print([item for item in zip(scores, episodes, memory_lens, epsilons, episode_hours, episode_minutes, episode_seconds, collisions, goals)])
