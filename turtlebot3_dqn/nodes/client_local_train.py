@@ -32,10 +32,10 @@ import sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from collections import deque, namedtuple
 from std_msgs.msg import Float64
-from src.turtlebot3_dqn.environment_stage_1 import Env
 # from turtlebot3_dqn.srv import PtModel,PtModelRequest, PtModelResponse
 from turtlebot3_dqn.srv import LocalTrain, LocalTrainRequest, LocalTrainResponse
 import pickle
+import importlib
 
 import os
 import torch
@@ -63,6 +63,7 @@ Transition = namedtuple('Transition', ('state', 'action', 'reward', 'next_state'
 EPISODES = 2
 CLIENT_ID = 1
 ROUND = 2
+STAGE = 1
 
 project_path = "/home/khinggan/my_research/ros_frl"
 file_path = project_path + '/config.yaml'
@@ -71,6 +72,7 @@ with open(file_path, 'r') as file:
     config = yaml.safe_load(file)
     
 config_type = config.get('type')
+STAGE = config.get('stage')
     
 if config_type == 'FRL':
     frl_config = config.get('frl', {})
@@ -86,6 +88,10 @@ else:
     print("Invalid type specified in the config file.")
 
 print(f"type: {config_type}, local episode: {EPISODES}, client ID: {CLIENT_ID}")
+
+stage_module_name = f'src.turtlebot3_dqn.environment_stage_{STAGE}'
+# from src.turtlebot3_dqn.environment_stage_1 import Env
+Env = getattr(importlib.import_module(stage_module_name), 'Env')
 
 state_size = 26
 action_size = 5
@@ -242,6 +248,8 @@ def start_train(request):
     
     scores, episodes, memory_lens, epsilons, episode_hours, episode_minutes, episode_seconds, collisions, goals = [], [], [], [], [], [], [], [], []
     global_step = 0
+    best_score = 0
+    best_model_dict = None
 
     # start train EPISODES episodes
     start_time = time.time()
@@ -296,7 +304,11 @@ def start_train(request):
 
                 rospy.loginfo('Ep: %d score: %.2f memory: %d epsilon: %.2f time: %d:%02d:%02d',
                               e, score, len(agent.memory), agent.epsilon, h, m, s)
-
+                # save best model
+                if score > best_score:
+                    best_score = score
+                    best_model_dict = agent.model.state_dict()
+                    print("Save the best score model of trained {} episodes, best score is {}".format(e, best_score))
                 break
 
             global_step += 1
@@ -310,12 +322,12 @@ def start_train(request):
     end_time = time.time()
 
     if config_type == 'FRL':
-        with open(project_path + "/ros1_ws/src/turtlebot3_machine_learning/turtlebot3_dqn/data/{}_ep_{}_round_{}.csv".format(config_type, EPISODES,  ROUND), 'a') as d:
+        with open(project_path + "/ros1_ws/src/turtlebot3_machine_learning/turtlebot3_dqn/data/{}_ep_{}_round_{}_client_{}_stage_{}.csv".format(config_type, EPISODES,  ROUND, CLIENT_ID, STAGE), 'a') as d:
             writer = csv.writer(d)
             writer.writerows([item for item in zip(scores, episodes, memory_lens, epsilons, episode_hours, episode_minutes, episode_seconds, collisions, goals)])
             print([item for item in zip(scores, episodes, memory_lens, epsilons, episode_hours, episode_minutes, episode_seconds, collisions, goals)])
     elif config_type == 'RL':
-        with open(project_path + "/ros1_ws/src/turtlebot3_machine_learning/turtlebot3_dqn/data/{}_ep_{}_round_{}.csv".format(config_type, EPISODES, ROUND), 'a') as d:
+        with open(project_path + "/ros1_ws/src/turtlebot3_machine_learning/turtlebot3_dqn/data/{}_ep_{}_round_{}_client_{}_stage_{}.csv".format(config_type, EPISODES, ROUND, CLIENT_ID, STAGE), 'a') as d:
             writer = csv.writer(d)
             writer.writerows([item for item in zip(scores, episodes, memory_lens, epsilons, episode_hours, episode_minutes, episode_seconds, collisions, goals)])
             print([item for item in zip(scores, episodes, memory_lens, epsilons, episode_hours, episode_minutes, episode_seconds, collisions, goals)])
@@ -323,7 +335,10 @@ def start_train(request):
         print("Invalid Type of config file, Didn't save model dict.")
 
     print("Total Train Time on client {} is : {} seconds".format(CLIENT_ID, end_time - start_time))
-    compressed_model_dict = pickle.dumps(agent.model.state_dict())
+    if best_model_dict == None:
+        compressed_model_dict = pickle.dumps(agent.model.state_dict())
+    else:
+        compressed_model_dict = pickle.dumps(best_model_dict)
     return compressed_model_dict
 
 def handle_local_train(request):

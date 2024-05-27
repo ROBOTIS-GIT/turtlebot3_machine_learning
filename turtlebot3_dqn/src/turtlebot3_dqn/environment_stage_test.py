@@ -109,6 +109,9 @@ class Env():
             rospy.loginfo("Collision!!")
             reward = -200
             self.pub_cmd_vel.publish(Twist())
+            self.goal_x, self.goal_y = self.respawn_goal.getPosition(True, delete=True)
+            self.goal_distance = self.getGoalDistace()
+            self.get_goalbox = False
 
         if self.get_goalbox:
             rospy.loginfo("Goal!!")
@@ -138,6 +141,8 @@ class Env():
 
         state, done = self.getState(data)
         reward = self.setReward(state, done, action)
+        if reward == 200: 
+            done = True
 
         return np.asarray(state), reward, done
 

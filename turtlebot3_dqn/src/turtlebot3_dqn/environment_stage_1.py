@@ -122,7 +122,7 @@ class Env():
         ang_vel = ((self.action_size - 1)/2 - action) * max_angular_vel * 0.5
 
         vel_cmd = Twist()
-        vel_cmd.linear.x = 0.2
+        vel_cmd.linear.x = 0.17
         vel_cmd.angular.z = ang_vel
         self.pub_cmd_vel.publish(vel_cmd)
 
