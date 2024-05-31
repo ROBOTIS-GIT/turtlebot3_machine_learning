@@ -205,7 +205,7 @@ def start_train(request):
 
     # start train EPISODES episodes
     start_time = time.time()
-    for e in range(agent.load_episode, LOCAL_EPISODES):
+    for e in range(1, LOCAL_EPISODES+1):
         done = False
         state = env.reset()
         state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
@@ -272,7 +272,10 @@ def start_train(request):
     end_time = time.time()
 
     # SAVE EXPERIMENT DATA
-    with open(os.environ['ROSFRLPATH'] + "data/FRL_localep_{}_totalround_{}_client_{}_stage_{}.csv".format(LOCAL_EPISODES,  ROUND, CURR_CID, STAGE), 'a') as d:
+    directory_path = os.environ['ROSFRLPATH'] + "data/"
+    if not os.path.exists(directory_path):
+        os.makedirs(directory_path)
+    with open(directory_path + "FRL_localep_{}_totalround_{}_client_{}_stage_{}.csv".format(LOCAL_EPISODES,  ROUND, CURR_CID, STAGE), 'a') as d:
         writer = csv.writer(d)
         writer.writerows([item for item in zip(scores, episodes, memory_lens, epsilons, episode_hours, episode_minutes, episode_seconds, collisions, goals)])
         print([item for item in zip(scores, episodes, memory_lens, epsilons, episode_hours, episode_minutes, episode_seconds, collisions, goals)])
