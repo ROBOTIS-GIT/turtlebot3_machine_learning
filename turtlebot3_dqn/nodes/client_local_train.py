@@ -1,93 +1,56 @@
 #!/usr/bin/env python
-#################################################################################
-# Copyright 2018 ROBOTIS CO., LTD.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#################################################################################
 
 # ** Author: khinggan ** 
 # ** Email: khinggan2013@gmail.com **
 
-"""Modification of ROBOTIS turtlebot3_machine_learning algorithm to PyTorch version 
-according to PyTorch Official Tutorial of Reinforcement Learning: https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
+"""
+Federated reinforcement learning client local training  
+1. Modified ROBOTIS turtlebot3_machine_learning algorithm (https://github.com/ROBOTIS-GIT/turtlebot3_machine_learning) to PyTorch version according to PyTorch Official Tutorial of Reinforcement Learning: https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
+2. Federated Reinforcement Learning (FRL) Client. 
+3. Using ros1_bridge (https://github.com/ros2/ros1_bridge) to separate clients and transmit data using customized service type (LocalTrain)
+
+First, getting request (global model) from the FRL server, then, train it locally, finally upload the trained model to FRL server
 """
 
 import rospy
-import os
-import json
 import numpy as np
 import random
 import time
+from collections import deque, namedtuple
+import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-from collections import deque, namedtuple
-from std_msgs.msg import Float64
-# from turtlebot3_dqn.srv import PtModel,PtModelRequest, PtModelResponse
-from turtlebot3_dqn.srv import LocalTrain, LocalTrainRequest, LocalTrainResponse
+from turtlebot3_dqn.srv import LocalTrain, LocalTrainResponse
 import pickle
 import importlib
 
-import os
 import torch
 from torch import nn
 import torch.optim as optim
 import torch.nn.functional as F
 
-import yaml
 import csv
 
-# Global Variables
-# device = (
-#     "cuda"
-#     if torch.cuda.is_available()
-#     else "mps"
-#     if torch.backends.mps.is_available()
-#     else "cpu"
-# )
+from script.read_config import yaml_config
+
+# If you want to use CUDA. But, make sure all machines has CUDA compatibility. Otherwise, use cpu
+# device = ("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 device = "cpu"
 print(f"Using {device} device")
 
 Transition = namedtuple('Transition', ('state', 'action', 'reward', 'next_state'))
 
-# Default values, can be modified by config.yaml
-EPISODES = 2
-CLIENT_ID = 1
-ROUND = 2
+CURR_CID = 1
 STAGE = 1
+LOCAL_EPISODES = 2
+ROUND = 2
 
-project_path = "/home/khinggan/my_research/ros_frl"
-file_path = project_path + '/config.yaml'
+config = yaml_config()        # stages = config['FRL']['server']['stages']
 
-with open(file_path, 'r') as file:
-    config = yaml.safe_load(file)
-    
-config_type = config.get('type')
-STAGE = config.get('stage')
-    
-if config_type == 'FRL':
-    frl_config = config.get('frl', {})
-    EPISODES = frl_config.get('local_episode')
-    ROUND = frl_config.get('round')
-    CLIENT_ID = int(frl_config.get('curr_client'))
-elif config_type == 'RL':
-    rl_config = config.get('rl', {})
-    EPISODES = rl_config.get('local_episode')
-    ROUND = rl_config.get('round')
-    CLIENT_ID = int(rl_config.get('curr_client'))
-else:
-    print("Invalid type specified in the config file.")
-
-print(f"type: {config_type}, local episode: {EPISODES}, client ID: {CLIENT_ID}")
+CURR_CID = config['FRL']['client']['curr_cid']
+STAGE = config['FRL']['client']['stage']
+LOCAL_EPISODES = config['FRL']['client']['local_episode']
+ROUND = config['FRL']['server']['round']
 
 stage_module_name = f'src.turtlebot3_dqn.environment_stage_{STAGE}'
 # from src.turtlebot3_dqn.environment_stage_1 import Env
@@ -129,10 +92,9 @@ class DQN(nn.Module):
 
 class ReinforceAgent():
     def __init__(self, state_size, action_size):
-        self.load_model = False
-        self.load_episode = 0
         self.state_size = state_size
         self.action_size = action_size
+
         self.episode_step = 6000
         self.target_update = 300
         self.discount_factor = 0.99
@@ -140,8 +102,9 @@ class ReinforceAgent():
         self.epsilon = 1.0
         self.epsilon_decay = 0.99
         self.epsilon_min = 0.05
-        self.batch_size = 64
-        self.train_start = 64
+
+        self.batch_size = 128
+        self.train_start = 128
         self.memory = ReplayMemory(10000)
 
         self.model = DQN(self.state_size, self.action_size).to(device)
@@ -149,13 +112,6 @@ class ReinforceAgent():
         self.updateTargetModel()
 
         self.optimizer = optim.AdamW(self.model.parameters(), lr=self.learning_rate, amsgrad=True)
-
-        # if self.load_model:
-        #     self.model.set_weights(load_model(self.dirPath+str(self.load_episode)+".h5").get_weights())
-
-        #     with open(self.dirPath+str(self.load_episode)+'.json') as outfile:
-        #         param = json.load(outfile)
-        #         self.epsilon = param.get('epsilon')
 
     def getQvalue(self, reward, next_target, done):
         if done:
@@ -230,17 +186,13 @@ class ReinforceAgent():
         torch.nn.utils.clip_grad_value_(self.model.parameters(), 100)
         self.optimizer.step()
 
-pub_result = rospy.Publisher('/result', Float64, queue_size=5)
-result = Float64()
 agent = ReinforceAgent(state_size, action_size)
 
 def start_train(request):
     global_model_dict = request.req
     model_dict = pickle.loads(global_model_dict)
-    # for key, value in model_dict.items():
-    #     print(key, value.size())
 
-    print("Client {} Round {}".format(CLIENT_ID, request.round))
+    print("#### ROUND {}: CLIENT {}'s local train Start #### ".format(request.round, CURR_CID))
 
     # Initialize agent model with global model dict
     agent.model.load_state_dict(model_dict)
@@ -249,11 +201,11 @@ def start_train(request):
     scores, episodes, memory_lens, epsilons, episode_hours, episode_minutes, episode_seconds, collisions, goals = [], [], [], [], [], [], [], [], []
     global_step = 0
     best_score = 0
-    best_model_dict = None
+    best_model_dict = model_dict
 
     # start train EPISODES episodes
     start_time = time.time()
-    for e in range(agent.load_episode, EPISODES):
+    for e in range(agent.load_episode, LOCAL_EPISODES):
         done = False
         state = env.reset()
         state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
@@ -286,8 +238,6 @@ def start_train(request):
                 done = True
 
             if done:
-                result.data = score  # original version: result.data = [score, np.max(agent.q_value)]
-                pub_result.publish(result)
                 agent.updateTargetModel()
                 scores.append(score.item())
                 episodes.append(e)
@@ -308,7 +258,7 @@ def start_train(request):
                 if score > best_score:
                     best_score = score
                     best_model_dict = agent.model.state_dict()
-                    print("Save the best score model of trained {} episodes, best score is {}".format(e, best_score))
+                    print("BEST SCORE MODEL SAVE: Episode = {}, Best Score = {}".format(e, best_score))
                 break
 
             global_step += 1
@@ -321,24 +271,14 @@ def start_train(request):
     state = env.reset()
     end_time = time.time()
 
-    if config_type == 'FRL':
-        with open(project_path + "/ros1_ws/src/turtlebot3_machine_learning/turtlebot3_dqn/data/{}_ep_{}_round_{}_client_{}_stage_{}.csv".format(config_type, EPISODES,  ROUND, CLIENT_ID, STAGE), 'a') as d:
-            writer = csv.writer(d)
-            writer.writerows([item for item in zip(scores, episodes, memory_lens, epsilons, episode_hours, episode_minutes, episode_seconds, collisions, goals)])
-            print([item for item in zip(scores, episodes, memory_lens, epsilons, episode_hours, episode_minutes, episode_seconds, collisions, goals)])
-    elif config_type == 'RL':
-        with open(project_path + "/ros1_ws/src/turtlebot3_machine_learning/turtlebot3_dqn/data/{}_ep_{}_round_{}_client_{}_stage_{}.csv".format(config_type, EPISODES, ROUND, CLIENT_ID, STAGE), 'a') as d:
-            writer = csv.writer(d)
-            writer.writerows([item for item in zip(scores, episodes, memory_lens, epsilons, episode_hours, episode_minutes, episode_seconds, collisions, goals)])
-            print([item for item in zip(scores, episodes, memory_lens, epsilons, episode_hours, episode_minutes, episode_seconds, collisions, goals)])
-    else:
-        print("Invalid Type of config file, Didn't save model dict.")
+    # SAVE EXPERIMENT DATA
+    with open(os.environ['ROSFRLPATH'] + "data/FRL_localep_{}_totalround_{}_client_{}_stage_{}.csv".format(LOCAL_EPISODES,  ROUND, CURR_CID, STAGE), 'a') as d:
+        writer = csv.writer(d)
+        writer.writerows([item for item in zip(scores, episodes, memory_lens, epsilons, episode_hours, episode_minutes, episode_seconds, collisions, goals)])
+        print([item for item in zip(scores, episodes, memory_lens, epsilons, episode_hours, episode_minutes, episode_seconds, collisions, goals)])
 
-    print("Total Train Time on client {} is : {} seconds".format(CLIENT_ID, end_time - start_time))
-    if best_model_dict == None:
-        compressed_model_dict = pickle.dumps(agent.model.state_dict())
-    else:
-        compressed_model_dict = pickle.dumps(best_model_dict)
+    print("Total Train Time on client {} is : {} seconds".format(CURR_CID, end_time - start_time))
+    compressed_model_dict = pickle.dumps(best_model_dict)
     return compressed_model_dict
 
 def handle_local_train(request):
@@ -347,16 +287,17 @@ def handle_local_train(request):
     response = LocalTrainResponse()
 
     response.resp = trained_model_dict
-    response.cid = CLIENT_ID
+    response.cid = CURR_CID
     response.round = request.round
     return response
 
 
 def client_local_train():
-    rospy.init_node('client_{}_local_train'.format(CLIENT_ID))
-
-    s = rospy.Service('client_{}_local_train_service'.format(CLIENT_ID), LocalTrain, handle_local_train)
-    print("Client {} Train global model".format(CLIENT_ID))
+    """client service that get global model, train locally, then return local trained model
+    """
+    rospy.init_node('client_{}_local_train'.format(CURR_CID))
+    s = rospy.Service('client_{}_local_train_service'.format(CURR_CID), LocalTrain, handle_local_train)
+    print("Client {} Train global model".format(CURR_CID))
     rospy.spin()
 
 if __name__ == '__main__':
