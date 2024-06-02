@@ -192,7 +192,7 @@ def start_train(request):
     global_model_dict = request.req
     model_dict = pickle.loads(global_model_dict)
 
-    print("#### ROUND {}: CLIENT {}'s local train Start #### ".format(request.round, CURR_CID))
+    print("#### ROUND {}: CLIENT {} local train on Stage {} #### ".format(request.round, CURR_CID, STAGE))
 
     # Initialize agent model with global model dict
     agent.model.load_state_dict(model_dict)
@@ -233,7 +233,7 @@ def start_train(request):
             score += reward
             state = next_state
 
-            if t >= 500:
+            if t >= 180:
                 rospy.loginfo("Time out!!")
                 done = True
 

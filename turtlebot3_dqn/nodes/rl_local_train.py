@@ -1,19 +1,4 @@
 #!/usr/bin/env python
-#################################################################################
-# Copyright 2018 ROBOTIS CO., LTD.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#################################################################################
 
 # ** Author: khinggan ** 
 # ** Email: khinggan2013@gmail.com **
@@ -23,43 +8,44 @@ according to PyTorch Official Tutorial of Reinforcement Learning: https://pytorc
 """
 
 import rospy
-import os
-import json
 import numpy as np
 import random
 import time
+from collections import deque, namedtuple
+import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-from collections import deque, namedtuple
-from std_msgs.msg import Float64
-from src.turtlebot3_dqn.environment_stage_1 import Env
-# from turtlebot3_dqn.srv import PtModel,PtModelRequest, PtModelResponse
-from turtlebot3_dqn.srv import LocalTrain, LocalTrainRequest, LocalTrainResponse
-import pickle
+import importlib
 
-import os
 import torch
 from torch import nn
 import torch.optim as optim
 import torch.nn.functional as F
 
+import csv
+import pickle
 
-# Global Variables
-# device = (
-#     "cuda"
-#     if torch.cuda.is_available()
-#     else "mps"
-#     if torch.backends.mps.is_available()
-#     else "cpu"
-# )
+from script.read_config import yaml_config
+
+# If you want to use CUDA. But, make sure all machines has CUDA compatibility. Otherwise, use cpu
+# device = ("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 device = "cpu"
 print(f"Using {device} device")
 
 Transition = namedtuple('Transition', ('state', 'action', 'reward', 'next_state'))
 
-# need to change EPISODES, CLIENT_ID
-EPISODES = 10
-CLIENT_ID = 2
+STAGE = 1
+EPISODES = 2
+
+config = yaml_config()        # stages = config['RL']['stage']
+
+STAGE = config['RL']['stage']
+EPISODES = config['RL']['episodes']
+
+stage_module_name = f'src.turtlebot3_dqn.environment_stage_{STAGE}'
+# from src.turtlebot3_dqn.environment_stage_1 import Env
+Env = getattr(importlib.import_module(stage_module_name), 'Env')
+
 state_size = 26
 action_size = 5
 env = Env(action_size)
@@ -96,8 +82,6 @@ class DQN(nn.Module):
 
 class ReinforceAgent():
     def __init__(self, state_size, action_size):
-        self.load_model = False
-        self.load_episode = 0
         self.state_size = state_size
         self.action_size = action_size
         self.episode_step = 6000
@@ -116,13 +100,6 @@ class ReinforceAgent():
         self.updateTargetModel()
 
         self.optimizer = optim.AdamW(self.model.parameters(), lr=self.learning_rate, amsgrad=True)
-
-        # if self.load_model:
-        #     self.model.set_weights(load_model(self.dirPath+str(self.load_episode)+".h5").get_weights())
-
-        #     with open(self.dirPath+str(self.load_episode)+'.json') as outfile:
-        #         param = json.load(outfile)
-        #         self.epsilon = param.get('epsilon')
 
     def getQvalue(self, reward, next_target, done):
         if done:
@@ -197,36 +174,35 @@ class ReinforceAgent():
         torch.nn.utils.clip_grad_value_(self.model.parameters(), 100)
         self.optimizer.step()
 
-pub_result = rospy.Publisher('/result', Float64, queue_size=5)
-result = Float64()
-agent = ReinforceAgent(state_size, action_size)
-
-def start_train(request):
-    global_model_dict = request.req
-    model_dict = pickle.loads(global_model_dict)
-    # for key, value in model_dict.items():
-    #     print(key, value.size())
-
-    print("Client {} Round {}".format(CLIENT_ID, request.round))
-
-    # Initialize agent model with global model dict
-    agent.model.load_state_dict(model_dict)
-    agent.updateTargetModel()
+if __name__ == '__main__':
+    rospy.init_node("rl_local_train")
+    agent = ReinforceAgent(state_size, action_size)
     
-    scores, episodes = [], []
+    scores, episodes, memory_lens, epsilons, episode_hours, episode_minutes, episode_seconds, collisions, goals = [], [], [], [], [], [], [], [], []
     global_step = 0
+    best_score = 0
+    best_model_dict = None
 
     # start train EPISODES episodes
     start_time = time.time()
-    for e in range(agent.load_episode, EPISODES):
+    for e in range(1, EPISODES+1):
         done = False
         state = env.reset()
         state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
         score = 0
+        collision = 0
+        goal = 0
         for t in range(agent.episode_step):
             action = agent.getAction(state)
 
             next_state, reward, done = env.step(action)
+
+            # check goal or collision
+            if reward == 200:
+                goal += 1
+            
+            if reward == -200:
+                collision += 1
 
             reward = torch.tensor([reward], device=device)
             next_state = torch.tensor(next_state, dtype=torch.float32, device=device).unsqueeze(0)
@@ -237,21 +213,38 @@ def start_train(request):
             score += reward
             state = next_state
 
-            if t >= 500:
+            if t >= 180:
                 rospy.loginfo("Time out!!")
                 done = True
 
             if done:
-                result.data = score  # original version: result.data = [score, np.max(agent.q_value)]
-                pub_result.publish(result)
                 agent.updateTargetModel()
                 scores.append(score)
                 episodes.append(e)
                 m, s = divmod(int(time.time() - start_time), 60)
                 h, m = divmod(m, 60)
 
+                memory_lens.append(len(agent.memory))
+                epsilons.append(agent.epsilon)
+                episode_hours.append(h)
+                episode_minutes.append(m)
+                episode_seconds.append(s)
+                collisions.append(collision)
+                goals.append(goal)
+
                 rospy.loginfo('Ep: %d score: %.2f memory: %d epsilon: %.2f time: %d:%02d:%02d',
                               e, score, len(agent.memory), agent.epsilon, h, m, s)
+                # save best model
+                if score > best_score:
+                    best_score = score
+                    best_model_dict = agent.model.state_dict()
+                    # SAVE TRAINED DICT
+                    save_dict_directory = os.environ['ROSFRLPATH'] + "model_dicts/saved_dict/"
+                    if not os.path.exists(save_dict_directory):
+                        os.makedirs(save_dict_directory)
+                    with open(save_dict_directory + "RL_episode_{}_stage_{}.pkl".format(EPISODES, STAGE), 'wb') as md:
+                        pickle.dump(agent.model.state_dict(), md)
+                        print("BEST SCORE MODEL SAVE: Episode = {}, Best Score = {}".format(e, best_score))
                 break
 
             global_step += 1
@@ -260,31 +253,22 @@ def start_train(request):
 
         if agent.epsilon > agent.epsilon_min:
             agent.epsilon *= agent.epsilon_decay
-    
-    state = env.reset()
     end_time = time.time()
+    # SAVE EXPERIMENT DATA
+    directory_path = os.environ['ROSFRLPATH'] + "data/"
+    if not os.path.exists(directory_path):
+        os.makedirs(directory_path)
+    with open(directory_path + "RL_episode_{}_stage_{}.csv".format(EPISODES, STAGE), 'a') as d:
+        writer = csv.writer(d)
+        writer.writerows([item for item in zip(scores, episodes, memory_lens, epsilons, episode_hours, episode_minutes, episode_seconds, collisions, goals)])
+        print([item for item in zip(scores, episodes, memory_lens, epsilons, episode_hours, episode_minutes, episode_seconds, collisions, goals)])
 
-    print("Total Train Time on client {} is : {} seconds".format(CLIENT_ID, end_time - start_time))
-    compressed_model_dict = pickle.dumps(agent.model.state_dict())
-    return compressed_model_dict
+    # SAVE TRAINED DICT
+    if best_model_dict == None:
+        save_dict_directory = os.environ['ROSFRLPATH'] + "model_dicts/saved_dict/"
+        if not os.path.exists(save_dict_directory):
+            os.makedirs(save_dict_directory)
+        with open(save_dict_directory + "RL_episode_{}_stage_{}.pkl".format(EPISODES, STAGE), 'wb') as md:
+            pickle.dump(agent.model.state_dict(), md)
 
-def handle_local_train(request):
-    trained_model_dict = start_train(request)
-
-    response = LocalTrainResponse()
-
-    response.resp = trained_model_dict
-    response.cid = CLIENT_ID
-    response.round = request.round
-    return response
-
-
-def client_local_train():
-    rospy.init_node('client_{}_local_train'.format(CLIENT_ID))
-
-    s = rospy.Service('client_{}_local_train_service'.format(CLIENT_ID), LocalTrain, handle_local_train)
-    print("Client {} Train global model".format(CLIENT_ID))
-    rospy.spin()
-
-if __name__ == '__main__':
-    client_local_train()
+    print("Total Train Time is : {} seconds".format(end_time - start_time))

@@ -1,0 +1,7 @@
+<launch>
+  <arg name="stage" default="4"/>
+  <param name="stage_number"  value="$(arg stage)"/>
+  <node pkg="turtlebot3_dqn" type="test_trained_model.py" name="test_trained_model" output="screen" />
+  <node pkg="turtlebot3_dqn" type="combination_obstacle_1" name="combination_obstacle_1" output="screen" />
+  <node pkg="turtlebot3_dqn" type="combination_obstacle_2" name="combination_obstacle_2" output="screen" />
+</launch>

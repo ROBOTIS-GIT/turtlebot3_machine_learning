@@ -1,19 +1,4 @@
 #!/usr/bin/env python
-#################################################################################
-# Copyright 2018 ROBOTIS CO., LTD.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#################################################################################
 
 # ** Author: khinggan ** 
 # ** Email: khinggan2013@gmail.com **
@@ -23,78 +8,64 @@ according to PyTorch Official Tutorial of Reinforcement Learning: https://pytorc
 """
 
 import rospy
-import os
 import numpy as np
 import random
 import time
+from collections import deque, namedtuple
+import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-from collections import deque, namedtuple
-from std_msgs.msg import Float64
-from src.turtlebot3_dqn.environment_stage_1 import Env
-# from turtlebot3_dqn.srv import PtModel,PtModelRequest, PtModelResponse
-import pickle
-
-import os
-import torch
-from torch import nn
-import torch.optim as optim
-import torch.nn.functional as F
-
-import yaml
 import importlib
 
-# Read config.yaml to find the current config.
+import torch
+from torch import nn
+import torch.nn.functional as F
 
-# Set .pickle directory 
+import pickle
 
-# Global Variables
-# device = (
-#     "cuda"
-#     if torch.cuda.is_available()
-#     else "mps"
-#     if torch.backends.mps.is_available()
-#     else "cpu"
-# )
+from script.read_config import yaml_config
+
+# If you want to use CUDA. But, make sure all machines has CUDA compatibility. Otherwise, use cpu
+# device = ("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 device = "cpu"
 print(f"Using {device} device")
 
 Transition = namedtuple('Transition', ('state', 'action', 'reward', 'next_state'))
 
-# Default values, can be modified by config.yaml
-EPISODES = 2
-CLIENT_ID = 1
-ROUND = 2
-STAGE = 1
+# TEST
+TEST_EPOCHES = 10
+TEST_STAGE = 1
 
-project_path = "/home/khinggan/my_research/ros_frl"
-file_path = project_path + '/config.yaml'
-trained_dict_path = project_path + '/ros2_ws/src/frl_server/model_dicts/'
+# RL
+TRAINED_EPISODES = 2
+TRAINED_STAGE = 1
 
-with open(file_path, 'r') as file:
-    config = yaml.safe_load(file)
-    
-config_type = config.get('type')
-STAGE = config.get('stage')
-    
-if config_type == 'FRL':
-    frl_config = config.get('frl', {})
-    EPISODES = frl_config.get('local_episode')
-    ROUND = frl_config.get('round')
-    CLIENT_ID = int(frl_config.get('curr_client'))
-elif config_type == 'RL':
-    rl_config = config.get('rl', {})
-    EPISODES = rl_config.get('local_episode')
-    ROUND = rl_config.get('round')
-    CLIENT_ID = int(rl_config.get('curr_client'))
-else:
-    print("Invalid type specified in the config file.")
+# FRL
+LOCAL_EPISODES = 10
+ROUND = 1
+STAGES = "21"
 
-print(f"type: {config_type}, local episode: {EPISODES}, client ID: {CLIENT_ID}")
+config = yaml_config()        # stages = config['RL']['stage']
 
-# stage_module_name = f'src.turtlebot3_dqn.environment_stage_{STAGE}'
-# Env = getattr(importlib.import_module(stage_module_name), 'Env')
+# TEST
+TEST_STAGE = config['TEST']['stage']               # Test stage
+TEST_EPOCHES = config['TEST']['test_epoches']     # Test episodes
+TYPE = config['TEST']['type']
+
+# RL
+TRAINED_EPISODES = config['RL']['episodes']
+TRAINED_STAGE = config['RL']['stage']
+
+# FRL
+LOCAL_EPISODES = config['FRL']['client']['local_episode']
+ROUND = config['FRL']['server']['round']
+STAGES = config['FRL']['server']['stages']
+
 from src.turtlebot3_dqn.environment_stage_test import Env
+
+state_size = 26
+action_size = 5
+env = Env(action_size)
 
 class ReplayMemory(object):
 
@@ -163,15 +134,17 @@ if __name__ == '__main__':
 
     env = Env(action_size)
 
-    test_epoches = 10
-
     agent = ReinforceAgent(state_size, action_size)
     # load trained dict
-    model_dict_file_name = "{}_ep_{}_round_{}_stage_{}.pkl".format(config_type, EPISODES, ROUND, STAGE)
-    with open(trained_dict_path + model_dict_file_name, 'rb') as md:
+    if TYPE == 'RL':
+        model_dict_file_name = "{}_episode_{}_stage_{}.pkl".format(TYPE, TRAINED_EPISODES, TRAINED_STAGE)
+    elif TYPE == 'FRL':
+        model_dict_file_name = "{}_localep_{}_totalround_{}_stages_{}.pkl".format(TYPE, LOCAL_EPISODES, ROUND, STAGES)
+    else:
+        print("FAIL TO LOAD TRAINED MODEL!!!!")
+
+    with open(os.environ['ROSFRLPATH'] + "model_dicts/saved_dict/" + model_dict_file_name, 'rb') as md:
         model_dict = pickle.load(md)
-    # for key, value in model_dict.items():
-    #     print(key, value.size())
 
     # Initialize agent model with global model dict
     agent.model.load_state_dict(model_dict)
@@ -183,7 +156,7 @@ if __name__ == '__main__':
     collision = 0
     goal = 0
 
-    for e in range(0, test_epoches):
+    for e in range(1, TEST_EPOCHES+1):
         done = False
         state = env.reset()
         state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
@@ -199,7 +172,7 @@ if __name__ == '__main__':
             score += reward
             state = next_state
 
-            if t >= 500:
+            if t >= 180:
                 rospy.loginfo("Time out!!")
                 done = True
 
@@ -221,4 +194,4 @@ if __name__ == '__main__':
 
             global_step += 1
     
-    print("Goal reached = {}, Collision = {}, Goal rate = {} Collision rate = {}".format(goal, collision, goal * 1.0 / test_epoches, collision * 1.0 / test_epoches))
+    print("Goal reached = {}, Collision = {}, Goal rate = {} Collision rate = {}".format(goal, collision, goal * 1.0 / TEST_EPOCHES, collision * 1.0 / TEST_EPOCHES))
