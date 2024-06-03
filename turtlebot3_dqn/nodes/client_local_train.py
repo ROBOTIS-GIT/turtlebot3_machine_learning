@@ -198,7 +198,7 @@ def start_train(request):
     agent.model.load_state_dict(model_dict)
     agent.updateTargetModel()
     
-    scores, episodes, memory_lens, epsilons, episode_hours, episode_minutes, episode_seconds, collisions, goals = [], [], [], [], [], [], [], [], []
+    scores, episodes, episode_length, memory_lens, epsilons, episode_hours, episode_minutes, episode_seconds, collisions, goals = [], [], [], [], [], [], [], [], [], []
     global_step = 0
     best_score = 0
     best_model_dict = model_dict
@@ -241,6 +241,7 @@ def start_train(request):
                 agent.updateTargetModel()
                 scores.append(score.item())
                 episodes.append(e)
+                episode_length.append(t)
                 m, s = divmod(int(time.time() - start_time), 60)
                 h, m = divmod(m, 60)
 

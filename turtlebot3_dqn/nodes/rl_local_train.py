@@ -178,7 +178,7 @@ if __name__ == '__main__':
     rospy.init_node("rl_local_train")
     agent = ReinforceAgent(state_size, action_size)
     
-    scores, episodes, memory_lens, epsilons, episode_hours, episode_minutes, episode_seconds, collisions, goals = [], [], [], [], [], [], [], [], []
+    scores, episodes, episode_length, memory_lens, epsilons, episode_hours, episode_minutes, episode_seconds, collisions, goals = [], [], [], [], [], [], [], [], [], []
     global_step = 0
     best_score = 0
     best_model_dict = None
@@ -219,8 +219,9 @@ if __name__ == '__main__':
 
             if done:
                 agent.updateTargetModel()
-                scores.append(score)
+                scores.append(score.item())
                 episodes.append(e)
+                episode_length.append(t)
                 m, s = divmod(int(time.time() - start_time), 60)
                 h, m = divmod(m, 60)
 
