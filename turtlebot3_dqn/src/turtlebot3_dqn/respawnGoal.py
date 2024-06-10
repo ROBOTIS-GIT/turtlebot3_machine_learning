@@ -35,8 +35,8 @@ class Respawn():
         self.model = self.f.read()
         self.stage = rospy.get_param('/stage_number')
         self.goal_position = Pose()
-        self.init_goal_x = 0.6
-        self.init_goal_y = 0.0
+        self.init_goal_x = -0.5
+        self.init_goal_y = -1.0
         self.goal_position.position.x = self.init_goal_x
         self.goal_position.position.y = self.init_goal_y
         self.modelName = 'goal'
@@ -108,19 +108,30 @@ class Respawn():
 
         else:
             while position_check:
-                goal_x_list = [0.6, 1.9, 0.5, 0.2, -0.8, -1, -1.9, 0.5, 2, 0.5, 0, -0.1, -2]
-                goal_y_list = [0, -0.5, -1.9, 1.5, -0.9, 1, 1.1, -1.5, 1.5, 1.8, -1, 1.6, -0.8]
-
-                self.index = random.randrange(0, 13)
+                goal_pose_list = [[1.0, 0.0], [2.0, -1.5], [0.0, -2.0], [2.0, 2.0], [0.8, 2.0],
+                                  [-1.9, 1.9], [-1.9,  0.2], [-1.9, -0.5], [-2.0, -2.0], [-0.5, -1.0],
+                                  [1.5, -1.0], [-0.5, 1.0], [-1.0, -2.0], [1.8, -0.2], [1.0, -1.9]]
+                self.index = random.randrange(0, len(goal_pose_list))
                 print(self.index, self.last_index)
                 if self.last_index == self.index:
                     position_check = True
                 else:
                     self.last_index = self.index
                     position_check = False
+                self.goal_position.position.x = goal_pose_list[self.index][0]
+                self.goal_position.position.y = goal_pose_list[self.index][1]
 
-                self.goal_position.position.x = goal_x_list[self.index]
-                self.goal_position.position.y = goal_y_list[self.index]
+                # goal_x_list = [0.6, 1.9, 0.5, 0.2, -0.8, -1, -1.9, 0.5, 2, 0.5, 0, -0.1, -2]
+                # goal_y_list = [0, -0.5, -1.9, 1.5, -0.9, 1, 1.1, -1.5, 1.5, 1.8, -1, 1.6, -0.8]
+                # self.index = random.randrange(0, 13)
+                # print(self.index, self.last_index)
+                # if self.last_index == self.index:
+                #     position_check = True
+                # else:
+                #     self.last_index = self.index
+                #     position_check = False
+                # self.goal_position.position.x = goal_x_list[self.index]
+                # self.goal_position.position.y = goal_y_list[self.index]
 
         time.sleep(0.5)
         self.respawnModel()
