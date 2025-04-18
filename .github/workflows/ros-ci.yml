@@ -53,6 +53,8 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip
           pip3 install keras==3.9.2
+          pip3 install PyQt5
+          pip3 install tensorflow==2.19.0
 
       - name: Build and Test
         uses: ros-tooling/action-ros-ci@v0.3
