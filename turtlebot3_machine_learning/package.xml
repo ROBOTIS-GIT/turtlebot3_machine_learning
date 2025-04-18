@@ -3,7 +3,7 @@
   <name>turtlebot3_machine_learning</name>
   <version>1.0.1</version>
   <description>
-    This metapackage fort ROS2 TurtleBot3 machine learning.
+    This metapackage for ROS2 TurtleBot3 machine learning.
   </description>
   <maintainer email="pyo@robotis.com">Pyo</maintainer>
   <license>Apache 2.0</license>
