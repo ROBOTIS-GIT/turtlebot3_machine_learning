@@ -17,14 +17,15 @@
 #
 # Authors: Ryan Shim, Gilbert, ChanHyeong Lee
 
-import sys
 import pickle
+import sys
 import threading
 
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float32MultiArray
-from PyQt5.QtWidgets import QApplication, QMainWindow
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QMainWindow
 from PyQt5.QtCore import QTimer
 import pyqtgraph
 
@@ -49,6 +50,7 @@ class GraphSubscriber(Node):
 
 
 class Window(QMainWindow):
+
     def __init__(self):
         super(Window, self).__init__()
 

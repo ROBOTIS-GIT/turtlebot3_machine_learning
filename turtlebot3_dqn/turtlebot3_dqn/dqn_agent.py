@@ -21,7 +21,6 @@ import collections
 import datetime
 import json
 import math
-import numpy
 import os
 import random
 import sys
@@ -31,6 +30,7 @@ from keras.api.layers import Dense
 from keras.api.models import load_model
 from keras.api.models import Sequential
 from keras.api.optimizers import Adam
+import numpy
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float32MultiArray

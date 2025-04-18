@@ -89,8 +89,8 @@ class DQNTest(Node):
             global_step += 1
             local_step = 0
 
-            state = list()
-            next_state = list()
+            state = []
+            next_state = []
             done = False
             init = True
             score = 0

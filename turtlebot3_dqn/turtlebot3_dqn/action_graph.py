@@ -19,15 +19,15 @@
 
 import sys
 
+from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import Qt
+from PyQt5.QtCore import QThread
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtWidgets import QGridLayout
 from PyQt5.QtWidgets import QLabel
 from PyQt5.QtWidgets import QLineEdit
 from PyQt5.QtWidgets import QProgressBar
 from PyQt5.QtWidgets import QWidget
-from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtCore import Qt
-from PyQt5.QtCore import QThread
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float32MultiArray
@@ -72,6 +72,7 @@ class Ros2Subscriber(Node):
 
 
 class Thread(QThread):
+
     signal_action0 = pyqtSignal(int)
     signal_action1 = pyqtSignal(int)
     signal_action2 = pyqtSignal(int)
@@ -91,6 +92,7 @@ class Thread(QThread):
 
 
 class Form(QWidget):
+
     def __init__(self, qt_thread):
         super().__init__(flags=Qt.Widget)
         self.setWindowTitle('Action State')

@@ -25,8 +25,8 @@ import numpy
 import rclpy
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.node import Node
-from rclpy.qos import QoSProfile
 from rclpy.qos import qos_profile_sensor_data
+from rclpy.qos import QoSProfile
 from sensor_msgs.msg import LaserScan
 from std_srvs.srv import Empty
 
@@ -201,7 +201,7 @@ class RLEnvironment(Node):
         self.goal_angle = goal_angle
 
     def calculate_state(self):
-        state = list()
+        state = []
         state.append(float(self.goal_distance))
         state.append(float(self.goal_angle))
 
