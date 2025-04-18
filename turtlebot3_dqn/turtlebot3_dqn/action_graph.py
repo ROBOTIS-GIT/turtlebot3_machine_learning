@@ -93,7 +93,7 @@ class Thread(QThread):
 class Form(QWidget):
     def __init__(self, qt_thread):
         super().__init__(flags=Qt.Widget)
-        self.setWindowTitle("Action State")
+        self.setWindowTitle('Action State')
 
         layout = QGridLayout()
 
@@ -122,19 +122,19 @@ class Form(QWidget):
         self.pgsb5.setValue(0)
         self.pgsb5.setRange(0, 100)
 
-        self.label_total_reward = QLabel("Total reward")
-        self.edit_total_reward = QLineEdit("")
+        self.label_total_reward = QLabel('Total reward')
+        self.edit_total_reward = QLineEdit('')
         self.edit_total_reward.setDisabled(True)
         self.edit_total_reward.setFixedWidth(100)
 
-        self.label_reward = QLabel("Reward")
-        self.edit_reward = QLineEdit("")
+        self.label_reward = QLabel('Reward')
+        self.edit_reward = QLineEdit('')
         self.edit_reward.setDisabled(True)
         self.edit_reward.setFixedWidth(100)
 
-        self.label_left = QLabel("Left")
-        self.label_front = QLabel("Front")
-        self.label_right = QLabel("Right")
+        self.label_left = QLabel('Left')
+        self.label_front = QLabel('Front')
+        self.label_right = QLabel('Right')
 
         layout.addWidget(self.label_total_reward, 0, 0)
         layout.addWidget(self.edit_total_reward, 1, 0)

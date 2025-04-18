@@ -52,7 +52,7 @@ class Window(QMainWindow):
     def __init__(self):
         super(Window, self).__init__()
 
-        self.setWindowTitle("Result")
+        self.setWindowTitle('Result')
         self.setGeometry(50, 50, 600, 650)
 
         self.ep = []
@@ -81,10 +81,10 @@ class Window(QMainWindow):
         self.rewards.append(msg.data[1])
 
     def plot(self):
-        self.qValuePlt = pyqtgraph.PlotWidget(self, title="Average max Q-value")
+        self.qValuePlt = pyqtgraph.PlotWidget(self, title='Average max Q-value')
         self.qValuePlt.setGeometry(0, 320, 600, 300)
 
-        self.rewardsPlt = pyqtgraph.PlotWidget(self, title="Total reward")
+        self.rewardsPlt = pyqtgraph.PlotWidget(self, title='Total reward')
         self.rewardsPlt.setGeometry(0, 10, 600, 300)
 
         self.timer = QTimer()
@@ -103,15 +103,15 @@ class Window(QMainWindow):
 
     def load_data(self):
         try:
-            with open("graph.txt", "rb") as f:
+            with open('graph.txt', 'rb') as f:
                 x, y = pickle.load(f)
         except Exception as e:
-            print("Data load error:", e)
+            print('Data load error:', e)
             x, y = [], []
         return x, y
 
     def save_data(self, data):
-        with open("graph.txt", "wb") as f:
+        with open('graph.txt', 'wb') as f:
             pickle.dump(data, f)
 
     def closeEvent(self, event):

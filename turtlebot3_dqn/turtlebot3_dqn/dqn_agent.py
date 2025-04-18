@@ -43,7 +43,7 @@ from turtlebot3_msgs.srv import Dqn
 tensorflow.config.set_visible_devices([], 'GPU')
 
 LOGGING = True
-current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+current_time = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
 dqn_reward_log_dir = 'logs/gradient_tape/' + current_time + '/dqn_stage4_usual_180_ray_yaw_reward'
 
 
@@ -181,10 +181,10 @@ class DQNAgent(Node):
                         self.dqn_reward_metric.reset_states()
 
                     print(
-                        "Episode:", episode,
-                        "score:", score,
-                        "memory length:", len(self.replay_memory),
-                        "epsilon:", self.epsilon)
+                        'Episode:', episode,
+                        'score:', score,
+                        'memory length:', len(self.replay_memory),
+                        'epsilon:', self.epsilon)
 
                     param_keys = ['epsilon', 'step']
                     param_values = [self.epsilon, self.step_counter]
@@ -285,7 +285,7 @@ class DQNAgent(Node):
     def update_target_model(self):
         self.target_model.set_weights(self.model.get_weights())
         self.target_update_after_counter = 0
-        print("*Target model updated*")
+        print('*Target model updated*')
 
     def append_sample(self, transition):
         self.replay_memory.append(transition)

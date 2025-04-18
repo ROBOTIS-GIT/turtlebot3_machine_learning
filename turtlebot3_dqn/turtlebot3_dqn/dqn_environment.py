@@ -210,7 +210,7 @@ class RLEnvironment(Node):
         self.local_step += 1
 
         if self.goal_distance < 0.20:
-            self.get_logger().info("Goal Reached")
+            self.get_logger().info('Goal Reached')
             self.succeed = True
             self.done = True
             self.cmd_vel_pub.publish(Twist())
@@ -218,7 +218,7 @@ class RLEnvironment(Node):
             self.call_task_succeed()
 
         if self.min_obstacle_distance < 0.15:
-            self.get_logger().info("Collision happened")
+            self.get_logger().info('Collision happened')
             self.fail = True
             self.done = True
             self.cmd_vel_pub.publish(Twist())
@@ -226,7 +226,7 @@ class RLEnvironment(Node):
             self.call_task_failed()
 
         if self.local_step == self.max_step:
-            self.get_logger().info("Time out!")
+            self.get_logger().info('Time out!')
             self.fail = True
             self.done = True
             self.cmd_vel_pub.publish(Twist())
