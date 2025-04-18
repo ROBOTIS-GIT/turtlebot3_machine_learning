@@ -1,9 +1,7 @@
-import glob
-
 from setuptools import find_packages
 from setuptools import setup
 
-package_name = 'turtlebot3_dqn'
+package_name = 'turtlebot3_machine_learning'
 authors_info = [
     ('Gilbert', 'kkjong@robotis.com'),
     ('Ryan Shim', 'N/A'),
@@ -19,25 +17,18 @@ setup(
     data_files=[
         ('share/ament_index/resource_index/packages', ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        ('share/' + package_name + '/launch', glob.glob('launch/*.py')),
     ],
-    install_requires=['setuptools', 'launch'],
+    install_requires=['setuptools'],
     zip_safe=True,
     author=authors,
     author_email=author_emails,
     maintainer='Pyo',
     maintainer_email='pyo@robotis.com',
-    description='ROS 2 packages for TurtleBot3 machine learning',
+    description='ROS 2 mata package for TurtleBot3 machine learning',
     license='Apache 2.0',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'dqn_agent = turtlebot3_dqn.dqn_agent:main',
-            'dqn_environment = turtlebot3_dqn.dqn_environment:main',
-            'dqn_gazebo = turtlebot3_dqn.dqn_gazebo:main',
-            'dqn_test = turtlebot3_dqn.dqn_test:main',
-            'action_graph = turtlebot3_dqn.action_graph:main',
-            'result_graph = turtlebot3_dqn.result_graph:main',
         ],
     },
 )
