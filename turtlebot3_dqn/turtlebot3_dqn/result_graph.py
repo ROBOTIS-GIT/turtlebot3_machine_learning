@@ -21,13 +21,13 @@ import pickle
 import sys
 import threading
 
+from PyQt5.QtCore import QTimer
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QMainWindow
+import pyqtgraph
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float32MultiArray
-from PyQt5.QtWidgets import QApplication
-from PyQt5.QtWidgets import QMainWindow
-from PyQt5.QtCore import QTimer
-import pyqtgraph
 
 
 class GraphSubscriber(Node):

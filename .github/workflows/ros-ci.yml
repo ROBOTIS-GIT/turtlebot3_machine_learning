@@ -49,6 +49,11 @@ jobs:
         with:
           required-ros-distributions: ${{ matrix.ros_distribution }}
 
+      - name: Install Python dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          pip3 install keras==3.9.2
+
       - name: Build and Test
         uses: ros-tooling/action-ros-ci@v0.3
 
