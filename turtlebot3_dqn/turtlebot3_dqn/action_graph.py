@@ -17,7 +17,10 @@
 #
 # Authors: Ryan Shim, Gilbert, ChanHyeong Lee
 
+import signal
 import sys
+import threading
+import time
 
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtCore import Qt
@@ -95,6 +98,7 @@ class Form(QWidget):
 
     def __init__(self, qt_thread):
         super().__init__(flags=Qt.Widget)
+        self.qt_thread = qt_thread
         self.setWindowTitle('Action State')
 
         layout = QGridLayout()
@@ -164,20 +168,40 @@ class Form(QWidget):
         qt_thread.signal_reward.connect(self.edit_reward.setText)
 
     def closeEvent(self, event):
+        if hasattr(self.qt_thread, 'node') and self.qt_thread.node is not None:
+            self.qt_thread.node.destroy_node()
         rclpy.shutdown()
         event.accept()
 
 
-def main(args=None):
-    rclpy.init(args=args)
-    qt_thread = Thread()
-    qt_thread.start()
+def run_qt_app(qt_thread):
     app = QApplication(sys.argv)
     form = Form(qt_thread)
     form.show()
-    exit_code = app.exec_()
-    return exit_code
+    app.exec_()
 
 
-if __name__ == '__main__':
-    sys.exit(main())
+def main():
+    rclpy.init()
+    qt_thread = Thread()
+    qt_thread.start()
+    qt_gui_thread = threading.Thread(target=run_qt_app, args=(qt_thread,), daemon=True)
+    qt_gui_thread.start()
+
+    def shutdown_handler(sig, frame):
+        print('shutdown')
+        qt_thread.node.destroy_node()
+        rclpy.shutdown()
+        sys.exit(0)
+
+    signal.signal(signal.SIGINT, shutdown_handler)
+    signal.signal(signal.SIGTERM, shutdown_handler)
+    try:
+        while rclpy.ok():
+            time.sleep(0.1)
+    except KeyboardInterrupt:
+        shutdown_handler(None, None)
+
+
+if __name__ == "__main__":
+    main()

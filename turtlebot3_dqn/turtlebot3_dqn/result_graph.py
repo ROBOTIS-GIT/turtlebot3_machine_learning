@@ -18,6 +18,7 @@
 # Authors: Ryan Shim, Gilbert, ChanHyeong Lee
 
 import pickle
+import signal
 import sys
 import threading
 
@@ -116,16 +117,21 @@ class Window(QMainWindow):
         with open('graph.txt', 'wb') as f:
             pickle.dump(data, f)
 
-    def closeEvent(self, event):
-        if self.ros_subscriber is not None:
-            self.ros_subscriber.destroy_node()
-        rclpy.shutdown()
-        event.accept()
-
 
 def main():
     rclpy.init()
     app = QApplication(sys.argv)
+    win = Window()
+
+    def shutdown_handler(sig, frame):
+        print('shutdown')
+        if win.ros_subscriber is not None:
+            win.ros_subscriber.destroy_node()
+        rclpy.shutdown()
+        app.quit()
+
+    signal.signal(signal.SIGINT, shutdown_handler)
+    signal.signal(signal.SIGTERM, shutdown_handler)
     sys.exit(app.exec())
 
 
