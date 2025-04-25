@@ -43,7 +43,7 @@ from turtlebot3_msgs.srv import Dqn
 tensorflow.config.set_visible_devices([], 'GPU')
 
 LOGGING = True
-current_time = datetime.datetime.now().strftime('[%Y/%m/%d-%H:%M]')
+current_time = datetime.datetime.now().strftime('[%mm%dd-%H:%M]')
 
 
 class DQNMetric(tensorflow.keras.metrics.Metric):
@@ -99,8 +99,10 @@ class DQNAgent(Node):
 
         self.load_model = False
         self.load_episode = 0
-        self.model_dir_path = os.path.dirname(os.path.realpath(__file__))
-        self.model_dir_path = self.model_dir_path.replace('turtlebot3_dqn/dqn_agent', 'model')
+        self.model_dir_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
+            'saved_model'
+        )
         self.model_path = os.path.join(
             self.model_dir_path,
             'stage' + str(self.stage) + '_episode' + str(self.load_episode) + '.h5'
@@ -117,7 +119,8 @@ class DQNAgent(Node):
                 self.step_counter = param.get('step_counter')
 
         if LOGGING:
-            dqn_reward_log_dir = 'logs/gradient_tape/' + current_time + ' dqn_stage' + stage + '_reward'
+            tensorboard_file_name = current_time + ' dqn_stage' + stage + '_reward'
+            dqn_reward_log_dir = 'logs/gradient_tape/' + tensorboard_file_name
             self.dqn_reward_writer = tensorflow.summary.create_file_writer(dqn_reward_log_dir)
             self.dqn_reward_metric = DQNMetric()
 
@@ -194,7 +197,7 @@ class DQNAgent(Node):
                 time.sleep(0.01)
 
             if self.train_mode:
-                if episode % 100 == 0:
+                if episode % 1 == 0:
                     self.model_path = os.path.join(
                         self.model_dir_path,
                         'stage' + str(self.stage) + '_episode' + str(episode) + '.h5')

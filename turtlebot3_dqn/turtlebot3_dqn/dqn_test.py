@@ -38,7 +38,7 @@ from turtlebot3_msgs.srv import Dqn
 
 class DQNTest(Node):
 
-    def __init__(self, stage):
+    def __init__(self, stage, load_episode):
         super().__init__('dqn_test')
 
         self.stage = int(stage)
@@ -60,9 +60,11 @@ class DQNTest(Node):
         self.target_model = self.build_model()
 
         self.load_model = True
-        self.load_episode = 600
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-        self.model_dir_path = os.path.join(base_dir, 'model')
+        self.load_episode = int(load_episode)
+        self.model_dir_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
+            'saved_model'
+        )
         self.model_path = os.path.join(
             self.model_dir_path,
             'stage'+str(self.stage)+'_episode'+str(self.load_episode)+'.h5')
@@ -204,8 +206,9 @@ def main(args=None):
     if args is None:
         args = sys.argv
     stage = args[1] if len(args) > 1 else '1'
+    load_episode = args[2] if len(args) > 2 else '600'
     rclpy.init(args=args)
-    dqn_test = DQNTest(stage)
+    dqn_test = DQNTest(stage, load_episode)
     try:
         while rclpy.ok():
             rclpy.spin_once(dqn_test, timeout_sec=0.1)
