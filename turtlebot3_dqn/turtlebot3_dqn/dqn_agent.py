@@ -197,7 +197,7 @@ class DQNAgent(Node):
                 time.sleep(0.01)
 
             if self.train_mode:
-                if episode % 1 == 0:
+                if episode % 100 == 0:
                     self.model_path = os.path.join(
                         self.model_dir_path,
                         'stage' + str(self.stage) + '_episode' + str(episode) + '.h5')
