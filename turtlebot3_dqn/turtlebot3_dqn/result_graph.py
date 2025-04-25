@@ -62,12 +62,6 @@ class Window(QMainWindow):
         self.data_list = []
         self.rewards = []
         self.count = 1
-        self.size_ep = 0
-        load_data = False
-
-        if load_data:
-            self.ep, self.data_list = self.load_data()
-            self.size_ep = len(self.ep)
 
         self.plot()
 
@@ -79,7 +73,7 @@ class Window(QMainWindow):
 
     def receive_data(self, msg):
         self.data_list.append(msg.data[0])
-        self.ep.append(self.size_ep + self.count)
+        self.ep.append(self.count)
         self.count += 1
         self.rewards.append(msg.data[1])
 
@@ -102,21 +96,12 @@ class Window(QMainWindow):
 
         self.rewardsPlt.plot(self.ep, self.data_list, pen=(255, 0, 0), clear=True)
         self.qValuePlt.plot(self.ep, self.rewards, pen=(0, 255, 0), clear=True)
-        self.save_data([self.ep, self.data_list])
 
-    def load_data(self):
-        try:
-            with open('graph.txt', 'rb') as f:
-                x, y = pickle.load(f)
-        except Exception as e:
-            print('Data load error:', e)
-            x, y = [], []
-        return x, y
-
-    def save_data(self, data):
-        with open('graph.txt', 'wb') as f:
-            pickle.dump(data, f)
-
+    def closeEvent(self, event):
+        if self.ros_subscriber is not None:
+            self.ros_subscriber.destroy_node()
+        rclpy.shutdown()
+        event.accept()
 
 def main():
     rclpy.init()
