@@ -43,8 +43,7 @@ from turtlebot3_msgs.srv import Dqn
 tensorflow.config.set_visible_devices([], 'GPU')
 
 LOGGING = True
-current_time = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
-dqn_reward_log_dir = 'logs/gradient_tape/' + current_time + '/dqn_stage4_usual_180_ray_yaw_reward'
+current_time = datetime.datetime.now().strftime('[%Y/%m/%d-%H:%M]')
 
 
 class DQNMetric(tensorflow.keras.metrics.Metric):
@@ -118,6 +117,7 @@ class DQNAgent(Node):
                 self.step_counter = param.get('step_counter')
 
         if LOGGING:
+            dqn_reward_log_dir = 'logs/gradient_tape/' + current_time + ' dqn_stage' + stage + '_reward'
             self.dqn_reward_writer = tensorflow.summary.create_file_writer(dqn_reward_log_dir)
             self.dqn_reward_metric = DQNMetric()
 

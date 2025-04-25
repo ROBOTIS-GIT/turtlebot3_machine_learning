@@ -17,7 +17,6 @@
 #
 # Authors: Ryan Shim, Gilbert, ChanHyeong Lee
 
-import pickle
 import signal
 import sys
 import threading
@@ -102,6 +101,7 @@ class Window(QMainWindow):
             self.ros_subscriber.destroy_node()
         rclpy.shutdown()
         event.accept()
+
 
 def main():
     rclpy.init()
