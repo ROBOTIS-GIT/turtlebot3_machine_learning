@@ -36,10 +36,10 @@ from turtlebot3_msgs.srv import Goal
 
 class GazeboInterface(Node):
 
-    def __init__(self, stage):
+    def __init__(self, stage_num):
         super().__init__('gazebo_interface')
 
-        self.stage = int(stage)
+        self.stage = int(stage_num)
 
         self.entity_name = 'Goal'
         self.entity = None
@@ -174,8 +174,8 @@ class GazeboInterface(Node):
 
 def main(args=None):
     rclpy.init(args=sys.argv)
-    stage = sys.argv[1] if len(sys.argv) > 1 else '1'
-    gazebo_interface = GazeboInterface(stage)
+    stage_num = sys.argv[1] if len(sys.argv) > 1 else '1'
+    gazebo_interface = GazeboInterface(stage_num)
     try:
         while rclpy.ok():
             rclpy.spin_once(gazebo_interface, timeout_sec=0.1)

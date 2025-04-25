@@ -67,10 +67,10 @@ class DQNMetric(tensorflow.keras.metrics.Metric):
 
 class DQNAgent(Node):
 
-    def __init__(self, stage, max_training_episodes):
+    def __init__(self, stage_num, max_training_episodes):
         super().__init__('dqn_agent')
 
-        self.stage = int(stage)
+        self.stage = int(stage_num)
         self.train_mode = True
         self.state_size = 26
         self.action_size = 5
@@ -119,7 +119,7 @@ class DQNAgent(Node):
                 self.step_counter = param.get('step_counter')
 
         if LOGGING:
-            tensorboard_file_name = current_time + ' dqn_stage' + stage + '_reward'
+            tensorboard_file_name = current_time + ' dqn_stage' + str(self.stage) + '_reward'
             dqn_reward_log_dir = 'logs/gradient_tape/' + tensorboard_file_name
             self.dqn_reward_writer = tensorflow.summary.create_file_writer(dqn_reward_log_dir)
             self.dqn_reward_metric = DQNMetric()
@@ -341,11 +341,11 @@ class DQNAgent(Node):
 def main(args=None):
     if args is None:
         args = sys.argv
-    stage = args[1] if len(args) > 1 else '1'
+    stage_num = args[1] if len(args) > 1 else '1'
     max_training_episodes = args[2] if len(args) > 2 else '1000'
     rclpy.init(args=args)
 
-    dqn_agent = DQNAgent(stage, max_training_episodes)
+    dqn_agent = DQNAgent(stage_num, max_training_episodes)
     rclpy.spin(dqn_agent)
 
     dqn_agent.destroy_node()
