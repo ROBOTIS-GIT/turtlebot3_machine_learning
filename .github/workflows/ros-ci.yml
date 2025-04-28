@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main, humble ]
+    branches: [ humble, jazzy, main ]
   pull_request:
-    branches: [ main, humble ]
+    branches: [ humble, jazzy, main ]
 
 jobs:
   ROS_CI:
