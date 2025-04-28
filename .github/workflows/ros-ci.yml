@@ -49,6 +49,11 @@ jobs:
         with:
           required-ros-distributions: ${{ matrix.ros_distribution }}
 
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install .
+
       - name: Build and Test
         uses: ros-tooling/action-ros-ci@v0.3
 
