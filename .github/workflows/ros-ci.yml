@@ -51,12 +51,14 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          python3 -m pip install --upgrade pip
-          pip3 install keras==3.9.2
-          pip3 install numpy==1.26.4
-          pip3 install PyQt5
-          pip3 install scipy==1.10.1
-          pip3 install tensorflow==2.19.0
+          python3 -m venv /home/runner/work/ci/venv
+          source /home/runner/work/ci/venv/bin/activate
+          pip install --upgrade pip
+          pip install keras==3.9.2
+          pip install numpy==1.26.4
+          pip install PyQt5
+          pip install scipy==1.10.1
+          pip install tensorflow==2.19.0
 
       - name: Build and Test
         uses: ros-tooling/action-ros-ci@v0.3
