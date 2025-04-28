@@ -30,9 +30,9 @@ jobs:
           #   ros_distribution: jazzy
           #   ros_version: 2
           # ROS 2 Rolling Ridley
-          # - docker_image: ubuntu:noble
-          #   ros_distribution: rolling
-          #   ros_version: 2
+          - docker_image: ubuntu:noble
+            ros_distribution: rolling
+            ros_version: 2
     container:
       image: ${{ matrix.docker_image }}
     steps:
@@ -48,6 +48,11 @@ jobs:
         uses: ros-tooling/setup-ros@v0.7
         with:
           required-ros-distributions: ${{ matrix.ros_distribution }}
+
+      - name: Install ROS2 dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ros-humble-turtlebot3-msgs
 
       - name: Install Python dependencies
         run: |
@@ -65,5 +70,5 @@ jobs:
           target-ros2-distro: ${{ matrix.ros_distribution }}
           vcs-repo-file-url: ""
           package-name: |
-            turtlebot3_machine_learning
             turtlebot3_dqn
+            turtlebot3_machine_learning
