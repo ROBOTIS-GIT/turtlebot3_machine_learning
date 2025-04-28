@@ -52,6 +52,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           pip install --upgrade pip
+          cd ros_ws/src/turtlebot3_machine_learning/turtlebot3_dqn
           pip install .
 
       - name: Build and Test
