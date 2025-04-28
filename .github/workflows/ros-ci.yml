@@ -1,16 +1,12 @@
-# The name of the workflow
 name: CI
 
-# Specifies the events that trigger the workflow
 on:
   push:
     branches: [ main, humble ]
   pull_request:
     branches: [ main, humble ]
 
-# Defines a set of jobs to be run as part of the workflow
 jobs:
-  # The name of the job
   ROS_CI:
     runs-on: ubuntu-22.04
     strategy:
@@ -49,15 +45,10 @@ jobs:
         with:
           required-ros-distributions: ${{ matrix.ros_distribution }}
 
-      - name: Install Python dependencies
-        run: |
-          pip install --upgrade pip
-          cd ros_ws/src/turtlebot3_machine_learning/turtlebot3_dqn
-          pip install .
-
       - name: Build and Test
         uses: ros-tooling/action-ros-ci@v0.3
-
+        env:
+          PIP_BREAK_SYSTEM_PACKAGES: "1"
         with:
           target-ros2-distro: ${{ matrix.ros_distribution }}
           vcs-repo-file-url: "https://raw.githubusercontent.com/ROBOTIS-GIT/turtlebot3_machine_learning/feature-humble-update/turtlebot3_machine_learning_ci.repos"
