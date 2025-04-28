@@ -16,11 +16,14 @@
   <depend>gazebo_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>rclpy</depend>
+  <depend>sensor_msgs</depend>
   <depend>std_srvs</depend>
   <depend>turtlebot3_msgs</depend>
-  <depend>sensor_msgs</depend>
-  <exec_depend>python3-tensorflow==2.19.0</exec_depend>
-  <exec_depend>python3-keras==3.9.2</exec_depend>
+  <exec_depend>python-keras-pip</exec_depend>
+  <exec_depend>python-tensorflow-pip</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-opencv</exec_depend>
+  <exec_depend>python3-pyqtgraph</exec_depend>
   <export>
     <build_type>ament_python</build_type>
   </export>

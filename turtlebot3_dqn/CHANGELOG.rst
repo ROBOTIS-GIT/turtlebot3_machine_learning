@@ -6,5 +6,5 @@ Changelog for package turtlebot3_dqn
 ------------------
 * Support for ROS 2 Humble version
 * Renewal of package structure
-* Improved behavioral rewards for agents.
+* Improved behavioral rewards for agents
 Contributors: ChanHyeong Lee
