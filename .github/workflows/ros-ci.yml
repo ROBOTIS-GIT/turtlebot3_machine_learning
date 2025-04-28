@@ -49,11 +49,6 @@ jobs:
         with:
           required-ros-distributions: ${{ matrix.ros_distribution }}
 
-      - name: Install ROS2 dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ros-humble-turtlebot3-msgs
-
       - name: Install Python dependencies
         run: |
           python3 -m pip install --upgrade pip
@@ -68,7 +63,7 @@ jobs:
 
         with:
           target-ros2-distro: ${{ matrix.ros_distribution }}
-          vcs-repo-file-url: ""
+          vcs-repo-file-url: "https://raw.githubusercontent.com/ROBOTIS-GIT/turtlebot3_machine_learning/feature-humble-update/turtlebot3_machine_learning_ci.repos"
           package-name: |
             turtlebot3_dqn
             turtlebot3_machine_learning
