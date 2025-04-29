@@ -3,16 +3,17 @@
   <name>turtlebot3_machine_learning</name>
   <version>1.0.0</version>
   <description>
-    This metapackage includes various ROS packages using TurtleBot3 and machine learning.
+    This metapackage for ROS 2 TurtleBot3 machine learning.
   </description>
-  <license>Apache 2.0</license>
-  <author email="kkjong@robotis.com">Gilbert</author>
   <maintainer email="pyo@robotis.com">Pyo</maintainer>
-  <url type="website">http://wiki.ros.org/turtlebot3_machine_learning</url>
-  <url type="emanual">http://turtlebot3.robotis.com</url>
+  <license>Apache 2.0</license>
+  <url type="website">http://turtlebot3.robotis.com</url>
   <url type="repository">https://github.com/ROBOTIS-GIT/turtlebot3_machine_learning</url>
   <url type="bugtracker">https://github.com/ROBOTIS-GIT/turtlebot3_machine_learning/issues</url>
-  <buildtool_depend>catkin</buildtool_depend>
+  <author email="kkjong@robotis.com">Gilbert</author>
+  <author email="dddoggi1207@gmail.com">ChanHyeong Lee</author>
   <exec_depend>turtlebot3_dqn</exec_depend>
-  <export><metapackage/></export>
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
 </package>

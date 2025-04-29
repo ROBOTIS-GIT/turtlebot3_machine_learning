@@ -1,0 +1,5 @@
+repositories:
+  turtlebot3_msgs:
+    type: git
+    url: https://github.com/ROBOTIS-GIT/turtlebot3_msgs.git
+    version: main

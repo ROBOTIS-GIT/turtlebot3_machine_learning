@@ -3,15 +3,23 @@
   <name>turtlebot3_dqn</name>
   <version>1.0.0</version>
   <description>
-    The turtlebot3_dqn package includes applications using reinforcement learning with DQN (Deep Q-Learning).
+    The turtlebot3_dqn package using reinforcement learning with DQN (Deep Q-Learning).
   </description>
-  <license>Apache 2.0</license>
-  <author email="kkjong@robotis.com">Gilbert</author>
   <maintainer email="pyo@robotis.com">Pyo</maintainer>
-  <url type="website">http://wiki.ros.org/turtlebot3_machine_learning</url>
-  <url type="emanual">http://turtlebot3.robotis.com</url>
+  <license>Apache 2.0</license>
+  <url type="website">http://turtlebot3.robotis.com</url>
   <url type="repository">https://github.com/ROBOTIS-GIT/turtlebot3_machine_learning</url>
   <url type="bugtracker">https://github.com/ROBOTIS-GIT/turtlebot3_machine_learning/issues</url>
-  <buildtool_depend>catkin</buildtool_depend>
-  <depend>rospy</depend>
+  <author email="kkjong@robotis.com">Gilbert</author>
+  <author email="dddoggi1207@gmail.com">ChanHyeong Lee</author>
+  <depend>geometry_msgs</depend>
+  <depend>rclpy</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_srvs</depend>
+  <depend>turtlebot3_msgs</depend>
+  <depend>python-keras-pip</depend>
+  <depend>python-tensorflow-pip</depend>
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
 </package>
