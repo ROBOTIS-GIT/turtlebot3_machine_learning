@@ -51,7 +51,7 @@ jobs:
           PIP_BREAK_SYSTEM_PACKAGES: "1"
         with:
           target-ros2-distro: ${{ matrix.ros_distribution }}
-          vcs-repo-file-url: "https://raw.githubusercontent.com/ROBOTIS-GIT/turtlebot3_machine_learning/feature-humble-update/turtlebot3_machine_learning_ci.repos"
+          vcs-repo-file-url: "https://raw.githubusercontent.com/ROBOTIS-GIT/turtlebot3_machine_learning/main/turtlebot3_machine_learning_ci.repos"
           package-name: |
             turtlebot3_dqn
             turtlebot3_machine_learning
