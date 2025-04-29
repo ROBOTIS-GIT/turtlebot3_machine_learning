@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>turtlebot3_dqn</name>
-  <version>1.0.1</version>
+  <version>1.0.0</version>
   <description>
     The turtlebot3_dqn package using reinforcement learning with DQN (Deep Q-Learning).
   </description>
