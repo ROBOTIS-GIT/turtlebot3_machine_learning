@@ -102,9 +102,9 @@ class GazeboInterface(Node):
 
             while not self.spawn_entity_client.wait_for_service(timeout_sec=1.0):
                 self.get_logger().warn('service for spawn_entity is not available, waiting ...')
-
             future = self.spawn_entity_client.call_async(spawn_req)
             rclpy.spin_until_future_complete(self, future)
+            print(f'[✓] Spawn Goal at ({self.entity_pose_x}, {self.entity_pose_y}, {0.0})')
         else:
             service_name = '/world/dqn/create'
             package_share = get_package_share_directory('turtlebot3_gazebo')
@@ -129,7 +129,7 @@ class GazeboInterface(Node):
             ]
             try:
                 subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL)
-                print(f'[✓] Spawn Entity at ({self.entity_pose_x}, {self.entity_pose_y}, {0.0})')
+                print(f'[✓] Spawn Goal at ({self.entity_pose_x}, {self.entity_pose_y}, {0.0})')
             except subprocess.CalledProcessError:
                 pass
 
@@ -137,11 +137,12 @@ class GazeboInterface(Node):
         if ROS_DISTRO == 'humble':
             delete_req = DeleteEntity.Request()
             delete_req.name = self.entity_name
+
             while not self.delete_entity_client.wait_for_service(timeout_sec=1.0):
                 self.get_logger().warn('service for delete_entity is not available, waiting ...')
             future = self.delete_entity_client.call_async(delete_req)
             rclpy.spin_until_future_complete(self, future)
-            self.get_logger().info('A goal deleted.')
+            print('[✓] Delete Goal')
         else:
             service_name = '/world/dqn/remove'
             req = f'name: {self.entity_name}, type: 2'
@@ -155,7 +156,7 @@ class GazeboInterface(Node):
             ]
             try:
                 subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL)
-                print('[✓] Delete Entity')
+                print('[✓] Delete Goal')
             except subprocess.CalledProcessError:
                 pass
 
@@ -202,7 +203,7 @@ class GazeboInterface(Node):
         ]
         try:
             subprocess.run(cmd_spawn, check=True, stdout=subprocess.DEVNULL)
-            print('[✓] Spawn Burger')
+            print('[✓] Respawn Burger')
         except subprocess.CalledProcessError:
             pass
 
