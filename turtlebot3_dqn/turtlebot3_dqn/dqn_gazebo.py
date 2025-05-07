@@ -24,9 +24,6 @@ import sys
 import time
 
 from ament_index_python.packages import get_package_share_directory
-from gazebo_msgs.srv import DeleteEntity
-from gazebo_msgs.srv import SpawnEntity
-from geometry_msgs.msg import Pose
 import rclpy
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.node import Node
@@ -36,6 +33,10 @@ from turtlebot3_msgs.srv import Goal
 
 
 ROS_DISTRO = os.environ.get('ROS_DISTRO')
+if ROS_DISTRO == 'humble':
+    from gazebo_msgs.srv import DeleteEntity
+    from gazebo_msgs.srv import SpawnEntity
+    from geometry_msgs.msg import Pose
 
 
 class GazeboInterface(Node):
