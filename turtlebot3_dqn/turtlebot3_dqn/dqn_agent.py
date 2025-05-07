@@ -120,7 +120,10 @@ class DQNAgent(Node):
 
         if LOGGING:
             tensorboard_file_name = current_time + ' dqn_stage' + str(self.stage) + '_reward'
-            dqn_reward_log_dir = 'logs/gradient_tape/' + tensorboard_file_name
+            home_dir = os.path.expanduser('~')
+            dqn_reward_log_dir = os.path.join(
+                home_dir, 'turtlebot3_dqn_logs', 'gradient_tape', tensorboard_file_name
+            )
             self.dqn_reward_writer = tensorflow.summary.create_file_writer(dqn_reward_log_dir)
             self.dqn_reward_metric = DQNMetric()
 

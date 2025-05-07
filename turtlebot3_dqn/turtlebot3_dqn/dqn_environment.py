@@ -18,7 +18,9 @@
 # Authors: Ryan Shim, Gilbert, ChanHyeong Lee
 
 import math
+import os
 
+from geometry_msgs.msg import Twist
 from geometry_msgs.msg import TwistStamped
 from nav_msgs.msg import Odometry
 import numpy
@@ -32,6 +34,9 @@ from std_srvs.srv import Empty
 
 from turtlebot3_msgs.srv import Dqn
 from turtlebot3_msgs.srv import Goal
+
+
+ROS_DISTRO = os.environ.get('ROS_DISTRO')
 
 
 class RLEnvironment(Node):
@@ -63,7 +68,10 @@ class RLEnvironment(Node):
 
         qos = QoSProfile(depth=10)
 
-        self.cmd_vel_pub = self.create_publisher(TwistStamped, 'cmd_vel', qos)
+        if ROS_DISTRO == 'humble':
+            self.cmd_vel_pub = self.create_publisher(Twist, 'cmd_vel', qos)
+        else:
+            self.cmd_vel_pub = self.create_publisher(TwistStamped, 'cmd_vel', qos)
 
         self.odom_sub = self.create_subscription(
             Odometry,
@@ -214,7 +222,10 @@ class RLEnvironment(Node):
             self.get_logger().info('Goal Reached')
             self.succeed = True
             self.done = True
-            self.cmd_vel_pub.publish(TwistStamped())
+            if ROS_DISTRO == 'humble':
+                self.cmd_vel_pub.publish(Twist())
+            else:
+                self.cmd_vel_pub.publish(TwistStamped())
             self.local_step = 0
             self.call_task_succeed()
 
@@ -222,7 +233,10 @@ class RLEnvironment(Node):
             self.get_logger().info('Collision happened')
             self.fail = True
             self.done = True
-            self.cmd_vel_pub.publish(TwistStamped())
+            if ROS_DISTRO == 'humble':
+                self.cmd_vel_pub.publish(Twist())
+            else:
+                self.cmd_vel_pub.publish(TwistStamped())
             self.local_step = 0
             self.call_task_failed()
 
@@ -230,7 +244,10 @@ class RLEnvironment(Node):
             self.get_logger().info('Time out!')
             self.fail = True
             self.done = True
-            self.cmd_vel_pub.publish(TwistStamped())
+            if ROS_DISTRO == 'humble':
+                self.cmd_vel_pub.publish(Twist())
+            else:
+                self.cmd_vel_pub.publish(TwistStamped())
             self.local_step = 0
             self.call_task_failed()
 
@@ -270,10 +287,17 @@ class RLEnvironment(Node):
 
     def rl_agent_interface_callback(self, request, response):
         action = request.action
-        twist = TwistStamped()
-        twist.twist.linear.x = 0.15
-        twist.twist.angular.z = self.angular_vel[action]
-        self.cmd_vel_pub.publish(twist)
+        if ROS_DISTRO == 'humble':
+            msg = Twist()
+            msg.linear.x = 0.15
+            msg.angular.z = self.angular_vel[action]
+        else:
+            msg = TwistStamped()
+            msg.header.stamp = self.get_clock().now().to_msg()
+            msg.header.frame_id = 'base_link'
+            msg.twist.linear.x = 0.15
+            msg.twist.angular.z = self.angular_vel[action]
+        self.cmd_vel_pub.publish(msg)
         if self.stop_cmd_vel_timer is None:
             self.prev_goal_distance = self.init_goal_distance
             self.stop_cmd_vel_timer = self.create_timer(1.8, self.timer_callback)
@@ -294,7 +318,10 @@ class RLEnvironment(Node):
 
     def timer_callback(self):
         self.get_logger().info('Stop called')
-        self.cmd_vel_pub.publish(TwistStamped())
+        if ROS_DISTRO == 'humble':
+            self.cmd_vel_pub.publish(Twist())
+        else:
+            self.cmd_vel_pub.publish(TwistStamped())
         self.destroy_timer(self.stop_cmd_vel_timer)
 
     def euler_from_quaternion(self, quat):

@@ -13,12 +13,15 @@
   <author email="kkjong@robotis.com">Gilbert</author>
   <author email="dddoggi1207@gmail.com">ChanHyeong Lee</author>
   <depend>geometry_msgs</depend>
+  <depend>python-keras-pip</depend>
+  <depend>python-tensorflow-pip</depend>
+  <depend>python3-pyqt5</depend>
+  <depend>python3-pyqtgraph</depend>
+  <depend>python3-scipy</depend>
   <depend>rclpy</depend>
   <depend>sensor_msgs</depend>
   <depend>std_srvs</depend>
   <depend>turtlebot3_msgs</depend>
-  <depend>python-keras-pip</depend>
-  <depend>python-tensorflow-pip</depend>
   <export>
     <build_type>ament_python</build_type>
   </export>

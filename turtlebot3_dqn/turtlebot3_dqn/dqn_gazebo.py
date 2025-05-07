@@ -24,11 +24,18 @@ import sys
 import time
 
 from ament_index_python.packages import get_package_share_directory
+from gazebo_msgs.srv import DeleteEntity
+from gazebo_msgs.srv import SpawnEntity
+from geometry_msgs.msg import Pose
 import rclpy
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.node import Node
+from std_srvs.srv import Empty
 
 from turtlebot3_msgs.srv import Goal
+
+
+ROS_DISTRO = os.environ.get('ROS_DISTRO')
 
 
 class GazeboInterface(Node):
@@ -40,6 +47,13 @@ class GazeboInterface(Node):
         self.entity_name = 'goal_box'
         self.entity_pose_x = 0.5
         self.entity_pose_y = 0.0
+
+        if ROS_DISTRO == 'humble':
+            self.entity = None
+            self.open_entity()
+            self.delete_entity_client = self.create_client(DeleteEntity, 'delete_entity')
+            self.spawn_entity_client = self.create_client(SpawnEntity, 'spawn_entity')
+            self.reset_simulation_client = self.create_client(Empty, 'reset_simulation')
 
         self.callback_group = MutuallyExclusiveCallbackGroup()
         self.initialize_env_service = self.create_service(
@@ -61,48 +75,96 @@ class GazeboInterface(Node):
             callback_group=self.callback_group
         )
 
-    def spawn_entity(self, x: float, y: float, z: float = 0.0):
-        service_name = '/world/dqn/create'
-        package_share = get_package_share_directory('turtlebot3_gazebo')
-        model_path = os.path.join(
-            package_share, 'models', 'turtlebot3_dqn_world', 'goal_box', 'model.sdf'
-        )
-
-        req = (
-            f'sdf_filename: "{model_path}, '
-            f'name: "{self.entity_name}", '
-            f'pose: {{ position: {{ x: {x}, y: {y}, z: {z} }} }}'
-        )
-        cmd = [
-            'gz', 'service',
-            '-s', service_name,
-            '--reqtype', 'gz.msgs.EntityFactory',
-            '--reptype', 'gz.msgs.Boolean',
-            '--timeout', '1000',
-            '--req', req
-        ]
+    def open_entity(self):
         try:
-            subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL)
-            print(f'[✓] Spawn Entity at ({x}, {y}, {z})')
-        except subprocess.CalledProcessError:
-            pass
+            package_share = get_package_share_directory('turtlebot3_gazebo')
+            model_path = os.path.join(
+                package_share, 'models', 'turtlebot3_dqn_world', 'goal_box', 'model.sdf'
+            )
+            with open(model_path, 'r') as f:
+                self.entity = f.read()
+            self.get_logger().info('Loaded entity from: ' + model_path)
+        except Exception as e:
+            self.get_logger().error('Failed to load entity file: {}'.format(e))
+            raise e
+
+    def spawn_entity(self):
+        if ROS_DISTRO == 'humble':
+            entity_pose = Pose()
+            entity_pose.position.x = self.entity_pose_x
+            entity_pose.position.y = self.entity_pose_y
+
+            spawn_req = SpawnEntity.Request()
+            spawn_req.name = self.entity_name
+            spawn_req.xml = self.entity
+            spawn_req.initial_pose = entity_pose
+
+            while not self.spawn_entity_client.wait_for_service(timeout_sec=1.0):
+                self.get_logger().warn('service for spawn_entity is not available, waiting ...')
+
+            future = self.spawn_entity_client.call_async(spawn_req)
+            rclpy.spin_until_future_complete(self, future)
+        else:
+            service_name = '/world/dqn/create'
+            package_share = get_package_share_directory('turtlebot3_gazebo')
+            model_path = os.path.join(
+                package_share, 'models', 'turtlebot3_dqn_world', 'goal_box', 'model.sdf'
+            )
+            req = (
+                f'sdf_filename: "{model_path}", '
+                f'name: "{self.entity_name}", '
+                f'pose: {{ position: {{ '
+                f'x: {self.entity_pose_x}, '
+                f'y: {self.entity_pose_y}, '
+                f'z: 0.0 }} }}'
+            )
+            cmd = [
+                'gz', 'service',
+                '-s', service_name,
+                '--reqtype', 'gz.msgs.EntityFactory',
+                '--reptype', 'gz.msgs.Boolean',
+                '--timeout', '1000',
+                '--req', req
+            ]
+            try:
+                subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL)
+                print(f'[✓] Spawn Entity at ({self.entity_pose_x}, {self.entity_pose_y}, {0.0})')
+            except subprocess.CalledProcessError:
+                pass
 
     def delete_entity(self):
-        service_name = '/world/dqn/remove'
-        req = f'name: {self.entity_name}, type: 2'
-        cmd = [
-            'gz', 'service',
-            '-s', service_name,
-            '--reqtype', 'gz.msgs.Entity',
-            '--reptype', 'gz.msgs.Boolean',
-            '--timeout', '1000',
-            '--req', req
-        ]
-        try:
-            subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL)
-            print('[✓] Delete Entity')
-        except subprocess.CalledProcessError:
-            pass
+        if ROS_DISTRO == 'humble':
+            delete_req = DeleteEntity.Request()
+            delete_req.name = self.entity_name
+            while not self.delete_entity_client.wait_for_service(timeout_sec=1.0):
+                self.get_logger().warn('service for delete_entity is not available, waiting ...')
+            future = self.delete_entity_client.call_async(delete_req)
+            rclpy.spin_until_future_complete(self, future)
+            self.get_logger().info('A goal deleted.')
+        else:
+            service_name = '/world/dqn/remove'
+            req = f'name: {self.entity_name}, type: 2'
+            cmd = [
+                'gz', 'service',
+                '-s', service_name,
+                '--reqtype', 'gz.msgs.Entity',
+                '--reptype', 'gz.msgs.Boolean',
+                '--timeout', '1000',
+                '--req', req
+            ]
+            try:
+                subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL)
+                print('[✓] Delete Entity')
+            except subprocess.CalledProcessError:
+                pass
+
+    def reset_simulation(self):
+        reset_req = Empty.Request()
+
+        while not self.reset_simulation_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().warn('service for reset_simulation is not available, waiting ...')
+
+        self.reset_simulation_client.call_async(reset_req)
 
     def reset_burger(self):
         service_name_delete = '/world/dqn/remove'
@@ -148,7 +210,7 @@ class GazeboInterface(Node):
         time.sleep(0.2)
         self.generate_goal_pose()
         time.sleep(0.2)
-        self.spawn_entity(self.entity_pose_x, self.entity_pose_y)
+        self.spawn_entity()
         response.pose_x = self.entity_pose_x
         response.pose_y = self.entity_pose_y
         response.success = True
@@ -157,11 +219,14 @@ class GazeboInterface(Node):
     def task_failed_callback(self, request, response):
         self.delete_entity()
         time.sleep(0.2)
-        self.reset_burger()
+        if ROS_DISTRO == 'humble':
+            self.reset_simulation()
+        else:
+            self.reset_burger()
         time.sleep(0.2)
         self.generate_goal_pose()
         time.sleep(0.2)
-        self.spawn_entity(self.entity_pose_x, self.entity_pose_y)
+        self.spawn_entity()
         response.pose_x = self.entity_pose_x
         response.pose_y = self.entity_pose_y
         response.success = True
@@ -170,9 +235,12 @@ class GazeboInterface(Node):
     def initialize_env_callback(self, request, response):
         self.delete_entity()
         time.sleep(0.2)
-        self.reset_burger()
+        if ROS_DISTRO == 'humble':
+            self.reset_simulation()
+        else:
+            self.reset_burger()
         time.sleep(0.2)
-        self.spawn_entity(self.entity_pose_x, self.entity_pose_y)
+        self.spawn_entity()
         response.pose_x = self.entity_pose_x
         response.pose_y = self.entity_pose_y
         response.success = True
