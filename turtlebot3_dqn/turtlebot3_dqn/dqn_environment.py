@@ -213,7 +213,6 @@ class RLEnvironment(Node):
         state = []
         state.append(float(self.goal_distance))
         state.append(float(self.goal_angle))
-
         for var in self.scan_ranges:
             state.append(float(var))
         self.local_step += 1
@@ -265,15 +264,15 @@ class RLEnvironment(Node):
             yaw_reward = (1 - 2 * math.sqrt(math.fabs(self.goal_angle / math.pi)))
 
             obstacle_reward = 0.0
-            if self.min_obstacle_distance < 0.50:
-                obstacle_reward = -1.0
+            if self.min_obstacle_distance < 0.30:
+                obstacle_reward = -0.5
 
-            reward = (distance_reward * 10) + (yaw_reward / 5) + obstacle_reward
+            reward = (distance_reward * 10) + (yaw_reward / 3) + obstacle_reward
 
             if self.succeed:
-                reward = 30.0
+                reward = 80.0
             elif self.fail:
-                reward = -10.0
+                reward = -50.0
 
         else:
             if self.succeed:

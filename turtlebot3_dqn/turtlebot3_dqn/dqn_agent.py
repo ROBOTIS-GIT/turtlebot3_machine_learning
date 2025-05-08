@@ -26,10 +26,11 @@ import random
 import sys
 import time
 
-from keras.api.layers import Dense
-from keras.api.models import load_model
-from keras.api.models import Sequential
-from keras.api.optimizers import Adam
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.layers import Input
+from tensorflow.keras.models import load_model
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.optimizers import Adam
 import numpy
 import rclpy
 from rclpy.node import Node
@@ -279,7 +280,8 @@ class DQNAgent(Node):
 
     def create_qnetwork(self):
         model = Sequential()
-        model.add(Dense(512, input_shape=(self.state_size,), activation='relu'))
+        model.add(Input(shape=(self.state_size,)))
+        model.add(Dense(512, activation='relu'))
         model.add(Dense(256, activation='relu'))
         model.add(Dense(128, activation='relu'))
         model.add(Dense(self.action_size, activation='linear'))
