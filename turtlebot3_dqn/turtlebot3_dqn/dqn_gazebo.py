@@ -145,7 +145,7 @@ class GazeboInterface(Node):
             print('[✓] Delete Goal')
         else:
             service_name = '/world/dqn/remove'
-            req = f'name: {self.entity_name}, type: 2'
+            req = f'name: "{self.entity_name}", type: 2'
             cmd = [
                 'gz', 'service',
                 '-s', service_name,
