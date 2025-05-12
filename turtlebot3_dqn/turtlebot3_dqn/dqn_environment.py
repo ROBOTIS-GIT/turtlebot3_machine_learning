@@ -228,7 +228,7 @@ class RLEnvironment(Node):
             self.local_step = 0
             self.call_task_succeed()
 
-        if self.min_obstacle_distance < 0.15:
+        if self.min_obstacle_distance < 0.18:
             self.get_logger().info('Collision happened')
             self.fail = True
             self.done = True
@@ -265,14 +265,15 @@ class RLEnvironment(Node):
 
             obstacle_reward = 0.0
             if self.min_obstacle_distance < 0.30:
-                obstacle_reward = -0.5
+                obstacle_reward = -1.0
 
-            reward = (distance_reward * 10) + (yaw_reward / 3) + obstacle_reward
+            print('Distance reward: %f, Yaw reward: %f' % (distance_reward, yaw_reward))
+            reward = (distance_reward * 10) + yaw_reward + obstacle_reward
 
             if self.succeed:
-                reward = 80.0
+                reward = 30.0
             elif self.fail:
-                reward = -50.0
+                reward = -10.0
 
         else:
             if self.succeed:
@@ -292,10 +293,9 @@ class RLEnvironment(Node):
             msg.angular.z = self.angular_vel[action]
         else:
             msg = TwistStamped()
-            msg.header.stamp = self.get_clock().now().to_msg()
-            msg.header.frame_id = 'base_link'
             msg.twist.linear.x = 0.15
             msg.twist.angular.z = self.angular_vel[action]
+
         self.cmd_vel_pub.publish(msg)
         if self.stop_cmd_vel_timer is None:
             self.prev_goal_distance = self.init_goal_distance

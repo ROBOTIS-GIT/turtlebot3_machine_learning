@@ -203,7 +203,7 @@ class GazeboInterface(Node):
         ]
         try:
             subprocess.run(cmd_spawn, check=True, stdout=subprocess.DEVNULL)
-            print('[✓] Respawn Burger')
+            print('[✓] Spawn Burger')
         except subprocess.CalledProcessError:
             pass
 

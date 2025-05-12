@@ -26,17 +26,18 @@ import random
 import sys
 import time
 
-from tensorflow.keras.layers import Dense
-from tensorflow.keras.layers import Input
-from tensorflow.keras.models import load_model
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.optimizers import Adam
 import numpy
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float32MultiArray
 from std_srvs.srv import Empty
 import tensorflow
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.layers import Input
+from tensorflow.keras.losses import MeanSquaredError
+from tensorflow.keras.models import load_model
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.optimizers import Adam
 
 from turtlebot3_msgs.srv import Dqn
 
@@ -85,7 +86,7 @@ class DQNAgent(Node):
         self.learning_rate = 0.0007
         self.epsilon = 1.0
         self.step_counter = 0
-        self.epsilon_decay = 20000
+        self.epsilon_decay = 10000
         self.epsilon_min = 0.05
         self.batch_size = 128
 
@@ -285,7 +286,7 @@ class DQNAgent(Node):
         model.add(Dense(256, activation='relu'))
         model.add(Dense(128, activation='relu'))
         model.add(Dense(self.action_size, activation='linear'))
-        model.compile(loss='mse', optimizer=Adam(learning_rate=self.learning_rate))
+        model.compile(loss=MeanSquaredError(), optimizer=Adam(learning_rate=self.learning_rate))
         model.summary()
 
         return model
