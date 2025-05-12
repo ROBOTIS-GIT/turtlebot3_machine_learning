@@ -108,7 +108,6 @@ class DQNTest(Node):
                     action = int(self.get_action(state))
 
                 req = Dqn.Request()
-                print(int(action))
                 req.action = action
                 req.init = init
 
@@ -161,8 +160,7 @@ class DQNTest(Node):
             return random.randrange(self.action_size)
         else:
             state = numpy.asarray(state)
-            q_value = self.model.predict(state.reshape(1, len(state)))
-            print(numpy.argmax(q_value[0]))
+            q_value = self.model.predict(state.reshape(1, len(state)), verbose=0)
             return numpy.argmax(q_value[0])
 
     def train_model(self, target_train_start=False):
@@ -177,13 +175,13 @@ class DQNTest(Node):
             next_state = numpy.asarray(mini_batch[i][3])
             done = numpy.asarray(mini_batch[i][4])
 
-            q_value = self.model.predict(state.reshape(1, len(state)))
+            q_value = self.model.predict(state.reshape(1, len(state)), verbose=0)
             self.max_q_value = numpy.max(q_value)
 
             if not target_train_start:
-                target_value = self.model.predict(next_state.reshape(1, len(next_state)))
+                target_value = self.model.predict(next_state.reshape(1, len(next_state)), verbose=0)
             else:
-                target_value = self.target_model.predict(next_state.reshape(1, len(next_state)))
+                target_value = self.target_model.predict(next_state.reshape(1, len(next_state)), verbose=0)
 
             if done:
                 next_q_value = reward

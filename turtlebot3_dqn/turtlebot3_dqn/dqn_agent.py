@@ -151,7 +151,7 @@ class DQNAgent(Node):
             while True:
                 local_step += 1
 
-                q_values = self.model.predict(state)
+                q_values = self.model.predict(state, verbose=0)
                 sum_max_q += float(numpy.max(q_values))
 
                 action = int(self.get_action(state))
@@ -246,9 +246,9 @@ class DQNAgent(Node):
             if lucky > (1 - self.epsilon):
                 result = random.randint(0, self.action_size - 1)
             else:
-                result = numpy.argmax(self.model.predict(state))
+                result = numpy.argmax(self.model.predict(state, verbose=0))
         else:
-            result = numpy.argmax(self.model.predict(state))
+            result = numpy.argmax(self.model.predict(state, verbose=0))
 
         return result
 
@@ -300,11 +300,11 @@ class DQNAgent(Node):
 
         current_states = numpy.array([transition[0] for transition in data_in_mini_batch])
         current_states = current_states.squeeze()
-        current_qvalues_list = self.model.predict(current_states)
+        current_qvalues_list = self.model.predict(current_states, verbose=0)
 
         next_states = numpy.array([transition[3] for transition in data_in_mini_batch])
         next_states = next_states.squeeze()
-        next_qvalues_list = self.target_model.predict(next_states)
+        next_qvalues_list = self.target_model.predict(next_states, verbose=0)
 
         x_train = []
         y_train = []
