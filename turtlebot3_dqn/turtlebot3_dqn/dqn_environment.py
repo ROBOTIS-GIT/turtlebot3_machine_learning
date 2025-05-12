@@ -264,7 +264,7 @@ class RLEnvironment(Node):
             yaw_reward = (1 - 2 * math.sqrt(math.fabs(self.goal_angle / math.pi)))
 
             obstacle_reward = 0.0
-            if self.min_obstacle_distance < 0.30:
+            if self.min_obstacle_distance < 0.50:
                 obstacle_reward = -1.0
 
             print('Distance reward: %f, Yaw reward: %f' % (distance_reward, yaw_reward))

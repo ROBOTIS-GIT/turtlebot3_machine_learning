@@ -101,7 +101,6 @@ class DQNTest(Node):
             local_step = 0
             next_state = []
 
-            self.get_logger().info(f'[EP {episode}] 시작')
             time.sleep(1.0)
 
             while not done:
@@ -113,7 +112,7 @@ class DQNTest(Node):
                 req.init = init
 
                 while not self.rl_agent_interface_client.wait_for_service(timeout_sec=1.0):
-                    self.get_logger().warn('RL 서비스 대기 중...')
+                    self.get_logger().warn('rl_agent interface service not available, waiting again...')
 
                 future = self.rl_agent_interface_client.call_async(req)
                 rclpy.spin_until_future_complete(self, future)
@@ -125,12 +124,9 @@ class DQNTest(Node):
                     score += reward
                     init = False
                 else:
-                    self.get_logger().error(f'서비스 호출 실패: {future.exception()}')
+                    self.get_logger().error(f'Service call failure: {future.exception()}')
 
                 time.sleep(0.01)
-
-            self.get_logger().info(f'[EP {episode}] 종료: 총 점수 {score:.2f}')
-
 
 def main(args=None):
     rclpy.init(args=args if args else sys.argv)
