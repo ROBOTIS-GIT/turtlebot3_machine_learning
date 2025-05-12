@@ -135,7 +135,13 @@ class DQNTest(Node):
                                 'Exception while calling service: {0}'.format(future.exception()))
 
                         break
-
+            if done:
+                print(
+                    'Episode:', episode,
+                    'score:', score,
+                    'memory length:', len(self.memory),
+                    'epsilon:', self.epsilon)
+                
                 time.sleep(0.01)
 
     def build_model(self):
