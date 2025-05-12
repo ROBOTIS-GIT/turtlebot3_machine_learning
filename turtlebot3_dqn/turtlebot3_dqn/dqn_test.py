@@ -59,7 +59,9 @@ class DQNTest(Node):
         )
         json_path = model_path.replace('.h5', '.json')
 
-        loaded_model = load_model(model_path, compile=False, custom_objects={'mse': MeanSquaredError()})
+        loaded_model = load_model(
+            model_path, compile=False, custom_objects={'mse': MeanSquaredError()}
+        )
         self.model.set_weights(loaded_model.get_weights())
 
         if os.path.exists(json_path):
@@ -73,7 +75,11 @@ class DQNTest(Node):
 
     def build_model(self):
         model = Sequential()
-        model.add(Dense(512, input_shape=(self.state_size,), activation='relu', kernel_initializer='lecun_uniform'))
+        model.add(Dense(
+            512, input_shape=(self.state_size,),
+            activation='relu',
+            kernel_initializer='lecun_uniform'
+        ))
         model.add(Dense(256, activation='relu', kernel_initializer='lecun_uniform'))
         model.add(Dense(128, activation='relu', kernel_initializer='lecun_uniform'))
         model.add(Dense(self.action_size, activation='linear', kernel_initializer='lecun_uniform'))
