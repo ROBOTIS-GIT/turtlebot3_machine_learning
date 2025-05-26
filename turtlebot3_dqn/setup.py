@@ -21,7 +21,7 @@ setup(
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name + '/launch', glob.glob('launch/*.py')),
     ],
-    install_requires=['setuptools', 'launch',],
+    install_requires=['setuptools', 'launch', 'numpy<2'],
     zip_safe=True,
     author=authors,
     author_email=author_emails,
