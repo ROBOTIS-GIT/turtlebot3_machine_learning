@@ -1,13 +1,13 @@
 <?xml version="1.0"?>
-<package format="2">t3_dqn package using reinforcement learning with DQN (Deep Q-Learning).
-  </description>
-  <maintainer email="pyo@robotis.com">Pyo</maintainer>
-  <license>Apache 2.0</license>
-
+<package format="2">
   <name>turtlebot3_dqn</name>
   <version>1.0.0</version>
   <description>
-    The turtlebo  <url type="website">http://turtlebot3.robotis.com</url>
+    The turtlebot3_dqn package using reinforcement learning with DQN (Deep Q-Learning).
+  </description>
+  <maintainer email="pyo@robotis.com">Pyo</maintainer>
+  <license>Apache 2.0</license>
+  <url type="website">http://turtlebot3.robotis.com</url>
   <url type="repository">https://github.com/ROBOTIS-GIT/turtlebot3_machine_learning</url>
   <url type="bugtracker">https://github.com/ROBOTIS-GIT/turtlebot3_machine_learning/issues</url>
   <author email="kkjong@robotis.com">Gilbert</author>
