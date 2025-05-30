@@ -12,18 +12,19 @@
   <url type="bugtracker">https://github.com/ROBOTIS-GIT/turtlebot3_machine_learning/issues</url>
   <author email="kkjong@robotis.com">Gilbert</author>
   <author email="dddoggi1207@gmail.com">ChanHyeong Lee</author>
-  <depend>ament_index_python</depend>
-  <depend>geometry_msgs</depend>
-  <depend>python-tensorflow-pip</depend>
-  <depend>python3-numpy</depend>
-  <depend>python3-pip</depend>
-  <depend>python3-pyqt5</depend>
-  <depend>python3-pyqtgraph</depend>
-  <depend>rclpy</depend>
-  <depend>sensor_msgs</depend>
-  <depend>std_msgs</depend>
-  <depend>std_srvs</depend>
-  <depend>turtlebot3_msgs</depend>
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>python-tensorflow-pip</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-pip</exec_depend>
+  <exec_depend>python3-pyqt5</exec_depend>
+  <exec_depend>python3-pyqtgraph</exec_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>std_srvs</exec_depend>
+  <exec_depend>turtlebot3_msgs</exec_depend>
+  <exec_depend>turtlebot3_simulations</exec_depend>
   <export>
     <build_type>ament_python</build_type>
   </export>
