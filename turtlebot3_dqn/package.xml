@@ -12,11 +12,11 @@
   <url type="bugtracker">https://github.com/ROBOTIS-GIT/turtlebot3_machine_learning/issues</url>
   <author email="kkjong@robotis.com">Gilbert</author>
   <author email="dddoggi1207@gmail.com">ChanHyeong Lee</author>
+  <exec_depend>python3-pip</exec_depend>
   <exec_depend>ament_index_python</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>python-tensorflow-pip</exec_depend>
   <exec_depend>python3-numpy</exec_depend>
-  <exec_depend>python3-pip</exec_depend>
   <exec_depend>python3-pyqt5</exec_depend>
   <exec_depend>python3-pyqtgraph</exec_depend>
   <exec_depend>rclpy</exec_depend>
