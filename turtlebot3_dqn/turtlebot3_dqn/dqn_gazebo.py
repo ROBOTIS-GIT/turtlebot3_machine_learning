@@ -250,14 +250,14 @@ class GazeboInterface(Node):
 
     def generate_goal_pose(self):
         if self.stage != 4:
-            self.entity_pose_x = random.randrange(-23, 23) / 10
-            self.entity_pose_y = random.randrange(-23, 23) / 10
+            self.entity_pose_x = random.randrange(-21, 21) / 10
+            self.entity_pose_y = random.randrange(-21, 21) / 10
         else:
             goal_pose_list = [
-                [1.0, 0.0], [2.0, -1.5], [0.0, -2.0], [2.0, 2.0], [0.8, 2.0], [-1.9, 1.9],
-                [-1.9, 0.2], [-1.9, -0.5], [-2.0, -2.0], [-0.5, -1.0], [-0.5, 2.0], [2.0, -0.5]
+                [1.0, 0.0], [2.0, -1.5], [0.0, -2.0], [2.0, 1.5], [0.5, 2.0], [-1.5, 2.1],
+                [-2.0, 0.5], [-2.0, -0.5], [-1.5, -2.0], [-0.5, -1.0], [2.0, -0.5], [-1.0, -1.0]
             ]
-            rand_index = random.randint(0, 11)
+            rand_index = random.randint(0, len(goal_pose_list) - 1)
             self.entity_pose_x = goal_pose_list[rand_index][0]
             self.entity_pose_y = goal_pose_list[rand_index][1]
 

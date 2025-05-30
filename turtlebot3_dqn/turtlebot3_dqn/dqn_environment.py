@@ -43,7 +43,6 @@ class RLEnvironment(Node):
 
     def __init__(self):
         super().__init__('rl_environment')
-        self.train_mode = True
         self.goal_pose_x = 0.0
         self.goal_pose_y = 0.0
         self.robot_pose_x = 0.0
@@ -60,7 +59,9 @@ class RLEnvironment(Node):
         self.goal_distance = 1.0
         self.init_goal_distance = 0.5
         self.scan_ranges = []
+        self.front_ranges = []
         self.min_obstacle_distance = 10.0
+        self.is_front_min_actual_front = False
 
         self.local_step = 0
         self.stop_cmd_vel_timer = None
@@ -175,17 +176,30 @@ class RLEnvironment(Node):
 
     def scan_sub_callback(self, scan):
         self.scan_ranges = []
+        self.front_ranges = []
+        self.front_angles = []
+
         num_of_lidar_rays = len(scan.ranges)
+        angle_min = scan.angle_min
+        angle_increment = scan.angle_increment
 
         for i in range(num_of_lidar_rays):
-            if scan.ranges[i] == float('Inf'):
-                self.scan_ranges.append(3.5)
-            elif numpy.isnan(scan.ranges[i]):
-                self.scan_ranges.append(0)
-            else:
-                self.scan_ranges.append(scan.ranges[i])
+            angle = angle_min + i * angle_increment
+            distance = scan.ranges[i]
+
+            if distance == float('Inf'):
+                distance = 3.5
+            elif numpy.isnan(distance):
+                distance = 0.0
+
+            self.scan_ranges.append(distance)
+
+            if (0 <= angle <= math.pi/2) or (3*math.pi/2 <= angle <= 2*math.pi):
+                self.front_ranges.append(distance)
+                self.front_angles.append(angle)
 
         self.min_obstacle_distance = min(self.scan_ranges)
+        self.front_min_obstacle_distance = min(self.front_ranges) if self.front_ranges else 10.0
 
     def odom_sub_callback(self, msg):
         self.robot_pose_x = msg.pose.pose.position.x
@@ -213,7 +227,7 @@ class RLEnvironment(Node):
         state = []
         state.append(float(self.goal_distance))
         state.append(float(self.goal_angle))
-        for var in self.scan_ranges:
+        for var in self.front_ranges:
             state.append(float(var))
         self.local_step += 1
 
@@ -228,7 +242,7 @@ class RLEnvironment(Node):
             self.local_step = 0
             self.call_task_succeed()
 
-        if self.min_obstacle_distance < 0.18:
+        if self.min_obstacle_distance < 0.15:
             self.get_logger().info('Collision happened')
             self.fail = True
             self.done = True
@@ -252,36 +266,45 @@ class RLEnvironment(Node):
 
         return state
 
+    def compute_directional_weights(self, relative_angles, max_weight=5.0):
+        power = 6
+        raw_weights = (numpy.cos(relative_angles))**power + 0.1
+        scaled_weights = raw_weights * (max_weight / numpy.max(raw_weights))
+        normalized_weights = scaled_weights / numpy.sum(scaled_weights)
+        return normalized_weights
+
+    def compute_weighted_obstacle_reward(self):
+        if not self.front_ranges or not self.front_angles:
+            return 0.0
+
+        front_ranges = numpy.array(self.front_ranges)
+        front_angles = numpy.array(self.front_angles)
+
+        collision_threshold = 0.25
+        cutoff = 3.5
+
+        relative_angles = numpy.unwrap(front_angles)
+        relative_angles[relative_angles > numpy.pi] -= 2 * numpy.pi
+
+        weights = self.compute_directional_weights(relative_angles, max_weight=5.0)
+        safe_dists = numpy.clip(front_ranges - collision_threshold, 1e-2, cutoff)
+        decay = numpy.exp(-3.0 * safe_dists)
+
+        reward = -5.0 * numpy.dot(weights, decay)
+
+        return reward
+
     def calculate_reward(self):
-        if self.train_mode:
+        yaw_reward = 1 - (2 * abs(self.goal_angle) / math.pi)
+        obstacle_reward = self.compute_weighted_obstacle_reward()
 
-            if not hasattr(self, 'prev_goal_distance'):
-                self.prev_goal_distance = self.init_goal_distance
+        print('directional_reward: %f, obstacle_reward: %f' % (yaw_reward, obstacle_reward))
+        reward = yaw_reward + obstacle_reward
 
-            distance_reward = self.prev_goal_distance - self.goal_distance
-            self.prev_goal_distance = self.goal_distance
-
-            yaw_reward = (1 - 2 * math.sqrt(math.fabs(self.goal_angle / math.pi)))
-
-            obstacle_reward = 0.0
-            if self.min_obstacle_distance < 0.50:
-                obstacle_reward = -1.0
-
-            print('Distance reward: %f, Yaw reward: %f' % (distance_reward, yaw_reward))
-            reward = (distance_reward * 10) + yaw_reward + obstacle_reward
-
-            if self.succeed:
-                reward = 30.0
-            elif self.fail:
-                reward = -10.0
-
-        else:
-            if self.succeed:
-                reward = 5.0
-            elif self.fail:
-                reward = -5.0
-            else:
-                reward = 0.0
+        if self.succeed:
+            reward = 50.0
+        elif self.fail:
+            reward = -30.0
 
         return reward
 
@@ -289,20 +312,20 @@ class RLEnvironment(Node):
         action = request.action
         if ROS_DISTRO == 'humble':
             msg = Twist()
-            msg.linear.x = 0.15
+            msg.linear.x = 0.2
             msg.angular.z = self.angular_vel[action]
         else:
             msg = TwistStamped()
-            msg.twist.linear.x = 0.15
+            msg.twist.linear.x = 0.2
             msg.twist.angular.z = self.angular_vel[action]
 
         self.cmd_vel_pub.publish(msg)
         if self.stop_cmd_vel_timer is None:
             self.prev_goal_distance = self.init_goal_distance
-            self.stop_cmd_vel_timer = self.create_timer(1.8, self.timer_callback)
+            self.stop_cmd_vel_timer = self.create_timer(0.8, self.timer_callback)
         else:
             self.destroy_timer(self.stop_cmd_vel_timer)
-            self.stop_cmd_vel_timer = self.create_timer(1.8, self.timer_callback)
+            self.stop_cmd_vel_timer = self.create_timer(0.8, self.timer_callback)
 
         response.state = self.calculate_state()
         response.reward = self.calculate_reward()

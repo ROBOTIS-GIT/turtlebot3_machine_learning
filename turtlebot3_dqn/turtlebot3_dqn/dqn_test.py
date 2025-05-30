@@ -18,9 +18,7 @@
 # Authors: Ryan Shim, Gilbert, ChanHyeong Lee
 
 import collections
-import json
 import os
-import random
 import sys
 import time
 
@@ -46,9 +44,7 @@ class DQNTest(Node):
 
         self.state_size = 26
         self.action_size = 5
-        self.episode_size = 3000
 
-        self.epsilon = 1.0
         self.memory = collections.deque(maxlen=1000000)
 
         self.model = self.build_model()
@@ -57,17 +53,11 @@ class DQNTest(Node):
             'saved_model',
             f'stage{self.stage}_episode{self.load_episode}.h5'
         )
-        json_path = model_path.replace('.h5', '.json')
 
         loaded_model = load_model(
             model_path, compile=False, custom_objects={'mse': MeanSquaredError()}
         )
         self.model.set_weights(loaded_model.get_weights())
-
-        if os.path.exists(json_path):
-            with open(json_path, 'r') as f:
-                param = json.load(f)
-                self.epsilon = param.get('epsilon', 1.0)
 
         self.rl_agent_interface_client = self.create_client(Dqn, 'rl_agent_interface')
 
@@ -87,14 +77,12 @@ class DQNTest(Node):
         return model
 
     def get_action(self, state):
-        if numpy.random.rand() <= self.epsilon:
-            return random.randrange(self.action_size)
         state = numpy.asarray(state)
         q_values = self.model.predict(state.reshape(1, -1), verbose=0)
         return int(numpy.argmax(q_values[0]))
 
     def run_test(self):
-        for episode in range(self.load_episode + 1, self.episode_size + 1):
+        while True:
             done = False
             init = True
             score = 0
@@ -112,7 +100,8 @@ class DQNTest(Node):
                 req.init = init
 
                 while not self.rl_agent_interface_client.wait_for_service(timeout_sec=1.0):
-                    self.get_logger().warn('rl_agent interface service not available, waiting again...')
+                    self.get_logger().warn(
+                        'rl_agent interface service not available, waiting again...')
 
                 future = self.rl_agent_interface_client.call_async(req)
                 rclpy.spin_until_future_complete(self, future)
@@ -127,6 +116,7 @@ class DQNTest(Node):
                     self.get_logger().error(f'Service call failure: {future.exception()}')
 
                 time.sleep(0.01)
+
 
 def main(args=None):
     rclpy.init(args=args if args else sys.argv)
