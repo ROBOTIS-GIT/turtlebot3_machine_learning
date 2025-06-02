@@ -183,6 +183,8 @@ class RLEnvironment(Node):
         angle_min = scan.angle_min
         angle_increment = scan.angle_increment
 
+        self.front_distance = scan.ranges[0]
+
         for i in range(num_of_lidar_rays):
             angle = angle_min + i * angle_increment
             distance = scan.ranges[i]
@@ -266,7 +268,7 @@ class RLEnvironment(Node):
 
         return state
 
-    def compute_directional_weights(self, relative_angles, max_weight=5.0):
+    def compute_directional_weights(self, relative_angles, max_weight=10.0):
         power = 6
         raw_weights = (numpy.cos(relative_angles))**power + 0.1
         scaled_weights = raw_weights * (max_weight / numpy.max(raw_weights))
@@ -280,17 +282,24 @@ class RLEnvironment(Node):
         front_ranges = numpy.array(self.front_ranges)
         front_angles = numpy.array(self.front_angles)
 
-        collision_threshold = 0.25
-        cutoff = 3.5
+        valid_mask = front_ranges <= 0.5
+        if not numpy.any(valid_mask):
+            return 0.0
+
+        front_ranges = front_ranges[valid_mask]
+        front_angles = front_angles[valid_mask]
 
         relative_angles = numpy.unwrap(front_angles)
         relative_angles[relative_angles > numpy.pi] -= 2 * numpy.pi
 
-        weights = self.compute_directional_weights(relative_angles, max_weight=5.0)
-        safe_dists = numpy.clip(front_ranges - collision_threshold, 1e-2, cutoff)
+        weights = self.compute_directional_weights(relative_angles, max_weight=10.0)
+
+        safe_dists = numpy.clip(front_ranges - 0.25, 1e-2, 3.5)
         decay = numpy.exp(-3.0 * safe_dists)
 
-        reward = -5.0 * numpy.dot(weights, decay)
+        weighted_decay = numpy.dot(weights, decay)
+
+        reward = - (1.0 + 4.0 * weighted_decay)
 
         return reward
 
@@ -302,9 +311,9 @@ class RLEnvironment(Node):
         reward = yaw_reward + obstacle_reward
 
         if self.succeed:
-            reward = 50.0
+            reward = 100.0
         elif self.fail:
-            reward = -30.0
+            reward = -50.0
 
         return reward
 
