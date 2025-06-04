@@ -47,7 +47,7 @@ jobs:
 
       - name: Add pip break-system-packages for rosdep
         run: |
-          echo -e "[install]\nbreak-system-packages = true" | sudo tee /etc/pip.conf
+          printf "[install]\nbreak-system-packages = true\n" | sudo tee /etc/pip.conf
 
       - name: Build and Test
         uses: ros-tooling/action-ros-ci@v0.3
