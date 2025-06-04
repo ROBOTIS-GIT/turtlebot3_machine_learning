@@ -5,7 +5,7 @@ Changelog for package turtlebot3_dqn
 ------------------
 * Support for ROS 2 Jazzy version
 * Using Gazebo sim for package
-Contributors: ChanHyeong Lee
+* Contributors: ChanHyeong Lee
 
 
 1.0.0 (2025-04-17)
@@ -13,4 +13,4 @@ Contributors: ChanHyeong Lee
 * Support for ROS 2 Humble version
 * Renewal of package structure
 * Improved behavioral rewards for agents
-Contributors: ChanHyeong Lee
+* Contributors: ChanHyeong Lee
