@@ -46,12 +46,13 @@ jobs:
           required-ros-distributions: ${{ matrix.ros_distribution }}
 
       - name: Check and Install ROS dependencies
-        shell: bash
         run: |
           set -e
           source /opt/ros/${{ matrix.ros_distribution }}/setup.bash
           echo "--- Updating rosdep definitions ---"
           rosdep update
+          echo "[install]" | sudo tee /etc/pip.conf
+          echo "break-system-packages = true" | sudo tee -a /etc/pip.conf
           echo "--- Installing system dependencies for ROS 2 ${{ matrix.ros_distribution }} ---"
           rosdep install --from-paths ros_ws/src --ignore-src -y -r --rosdistro ${{ matrix.ros_distribution }}
           echo "--- Performing rosdep check for ROS 2 ${{ matrix.ros_distribution }} ---"
