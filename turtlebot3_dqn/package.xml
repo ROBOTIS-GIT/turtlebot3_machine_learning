@@ -24,7 +24,6 @@
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>std_srvs</exec_depend>
   <exec_depend>turtlebot3_msgs</exec_depend>
-  <exec_depend>turtlebot3_simulations</exec_depend>
   <export>
     <build_type>ament_python</build_type>
   </export>
