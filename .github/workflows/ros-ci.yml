@@ -45,6 +45,10 @@ jobs:
         with:
           required-ros-distributions: ${{ matrix.ros_distribution }}
 
+      - name: Add pip break-system-packages for rosdep
+        run: |
+          printf "[install]\nbreak-system-packages = true\n" | sudo tee /etc/pip.conf
+
       - name: Build and Test
         uses: ros-tooling/action-ros-ci@v0.3
         env:
