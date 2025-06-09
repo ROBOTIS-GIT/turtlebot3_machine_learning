@@ -18,8 +18,10 @@
 # Authors: Ryan Shim, Gilbert, ChanHyeong Lee
 
 import math
+import os
 
 from geometry_msgs.msg import Twist
+from geometry_msgs.msg import TwistStamped
 from nav_msgs.msg import Odometry
 import numpy
 import rclpy
@@ -34,11 +36,13 @@ from turtlebot3_msgs.srv import Dqn
 from turtlebot3_msgs.srv import Goal
 
 
+ROS_DISTRO = os.environ.get('ROS_DISTRO')
+
+
 class RLEnvironment(Node):
 
     def __init__(self):
         super().__init__('rl_environment')
-        self.train_mode = True
         self.goal_pose_x = 0.0
         self.goal_pose_y = 0.0
         self.robot_pose_x = 0.0
@@ -55,7 +59,9 @@ class RLEnvironment(Node):
         self.goal_distance = 1.0
         self.init_goal_distance = 0.5
         self.scan_ranges = []
+        self.front_ranges = []
         self.min_obstacle_distance = 10.0
+        self.is_front_min_actual_front = False
 
         self.local_step = 0
         self.stop_cmd_vel_timer = None
@@ -63,7 +69,10 @@ class RLEnvironment(Node):
 
         qos = QoSProfile(depth=10)
 
-        self.cmd_vel_pub = self.create_publisher(Twist, 'cmd_vel', qos)
+        if ROS_DISTRO == 'humble':
+            self.cmd_vel_pub = self.create_publisher(Twist, 'cmd_vel', qos)
+        else:
+            self.cmd_vel_pub = self.create_publisher(TwistStamped, 'cmd_vel', qos)
 
         self.odom_sub = self.create_subscription(
             Odometry,
@@ -112,6 +121,7 @@ class RLEnvironment(Node):
         )
 
     def make_environment_callback(self, request, response):
+        self.get_logger().info('Make environment called')
         while not self.initialize_environment_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().warn(
                 'service for initialize the environment is not available, waiting ...'
@@ -166,17 +176,32 @@ class RLEnvironment(Node):
 
     def scan_sub_callback(self, scan):
         self.scan_ranges = []
+        self.front_ranges = []
+        self.front_angles = []
+
         num_of_lidar_rays = len(scan.ranges)
+        angle_min = scan.angle_min
+        angle_increment = scan.angle_increment
+
+        self.front_distance = scan.ranges[0]
 
         for i in range(num_of_lidar_rays):
-            if scan.ranges[i] == float('Inf'):
-                self.scan_ranges.append(3.5)
-            elif numpy.isnan(scan.ranges[i]):
-                self.scan_ranges.append(0)
-            else:
-                self.scan_ranges.append(scan.ranges[i])
+            angle = angle_min + i * angle_increment
+            distance = scan.ranges[i]
+
+            if distance == float('Inf'):
+                distance = 3.5
+            elif numpy.isnan(distance):
+                distance = 0.0
+
+            self.scan_ranges.append(distance)
+
+            if (0 <= angle <= math.pi/2) or (3*math.pi/2 <= angle <= 2*math.pi):
+                self.front_ranges.append(distance)
+                self.front_angles.append(angle)
 
         self.min_obstacle_distance = min(self.scan_ranges)
+        self.front_min_obstacle_distance = min(self.front_ranges) if self.front_ranges else 10.0
 
     def odom_sub_callback(self, msg):
         self.robot_pose_x = msg.pose.pose.position.x
@@ -204,8 +229,7 @@ class RLEnvironment(Node):
         state = []
         state.append(float(self.goal_distance))
         state.append(float(self.goal_angle))
-
-        for var in self.scan_ranges:
+        for var in self.front_ranges:
             state.append(float(var))
         self.local_step += 1
 
@@ -213,7 +237,10 @@ class RLEnvironment(Node):
             self.get_logger().info('Goal Reached')
             self.succeed = True
             self.done = True
-            self.cmd_vel_pub.publish(Twist())
+            if ROS_DISTRO == 'humble':
+                self.cmd_vel_pub.publish(Twist())
+            else:
+                self.cmd_vel_pub.publish(TwistStamped())
             self.local_step = 0
             self.call_task_succeed()
 
@@ -221,7 +248,10 @@ class RLEnvironment(Node):
             self.get_logger().info('Collision happened')
             self.fail = True
             self.done = True
-            self.cmd_vel_pub.publish(Twist())
+            if ROS_DISTRO == 'humble':
+                self.cmd_vel_pub.publish(Twist())
+            else:
+                self.cmd_vel_pub.publish(TwistStamped())
             self.local_step = 0
             self.call_task_failed()
 
@@ -229,56 +259,82 @@ class RLEnvironment(Node):
             self.get_logger().info('Time out!')
             self.fail = True
             self.done = True
-            self.cmd_vel_pub.publish(Twist())
+            if ROS_DISTRO == 'humble':
+                self.cmd_vel_pub.publish(Twist())
+            else:
+                self.cmd_vel_pub.publish(TwistStamped())
             self.local_step = 0
             self.call_task_failed()
 
         return state
 
+    def compute_directional_weights(self, relative_angles, max_weight=10.0):
+        power = 6
+        raw_weights = (numpy.cos(relative_angles))**power + 0.1
+        scaled_weights = raw_weights * (max_weight / numpy.max(raw_weights))
+        normalized_weights = scaled_weights / numpy.sum(scaled_weights)
+        return normalized_weights
+
+    def compute_weighted_obstacle_reward(self):
+        if not self.front_ranges or not self.front_angles:
+            return 0.0
+
+        front_ranges = numpy.array(self.front_ranges)
+        front_angles = numpy.array(self.front_angles)
+
+        valid_mask = front_ranges <= 0.5
+        if not numpy.any(valid_mask):
+            return 0.0
+
+        front_ranges = front_ranges[valid_mask]
+        front_angles = front_angles[valid_mask]
+
+        relative_angles = numpy.unwrap(front_angles)
+        relative_angles[relative_angles > numpy.pi] -= 2 * numpy.pi
+
+        weights = self.compute_directional_weights(relative_angles, max_weight=10.0)
+
+        safe_dists = numpy.clip(front_ranges - 0.25, 1e-2, 3.5)
+        decay = numpy.exp(-3.0 * safe_dists)
+
+        weighted_decay = numpy.dot(weights, decay)
+
+        reward = - (1.0 + 4.0 * weighted_decay)
+
+        return reward
+
     def calculate_reward(self):
-        if self.train_mode:
+        yaw_reward = 1 - (2 * abs(self.goal_angle) / math.pi)
+        obstacle_reward = self.compute_weighted_obstacle_reward()
 
-            if not hasattr(self, 'prev_goal_distance'):
-                self.prev_goal_distance = self.init_goal_distance
+        print('directional_reward: %f, obstacle_reward: %f' % (yaw_reward, obstacle_reward))
+        reward = yaw_reward + obstacle_reward
 
-            distance_reward = self.prev_goal_distance - self.goal_distance
-            self.prev_goal_distance = self.goal_distance
-
-            yaw_reward = (1 - 2 * math.sqrt(math.fabs(self.goal_angle / math.pi)))
-
-            obstacle_reward = 0.0
-            if self.min_obstacle_distance < 0.50:
-                obstacle_reward = -1.0
-
-            reward = (distance_reward * 10) + (yaw_reward / 5) + obstacle_reward
-
-            if self.succeed:
-                reward = 30.0
-            elif self.fail:
-                reward = -10.0
-
-        else:
-            if self.succeed:
-                reward = 5.0
-            elif self.fail:
-                reward = -5.0
-            else:
-                reward = 0.0
+        if self.succeed:
+            reward = 100.0
+        elif self.fail:
+            reward = -50.0
 
         return reward
 
     def rl_agent_interface_callback(self, request, response):
         action = request.action
-        twist = Twist()
-        twist.linear.x = 0.15
-        twist.angular.z = self.angular_vel[action]
-        self.cmd_vel_pub.publish(twist)
+        if ROS_DISTRO == 'humble':
+            msg = Twist()
+            msg.linear.x = 0.2
+            msg.angular.z = self.angular_vel[action]
+        else:
+            msg = TwistStamped()
+            msg.twist.linear.x = 0.2
+            msg.twist.angular.z = self.angular_vel[action]
+
+        self.cmd_vel_pub.publish(msg)
         if self.stop_cmd_vel_timer is None:
             self.prev_goal_distance = self.init_goal_distance
-            self.stop_cmd_vel_timer = self.create_timer(1.8, self.timer_callback)
+            self.stop_cmd_vel_timer = self.create_timer(0.8, self.timer_callback)
         else:
             self.destroy_timer(self.stop_cmd_vel_timer)
-            self.stop_cmd_vel_timer = self.create_timer(1.8, self.timer_callback)
+            self.stop_cmd_vel_timer = self.create_timer(0.8, self.timer_callback)
 
         response.state = self.calculate_state()
         response.reward = self.calculate_reward()
@@ -293,7 +349,10 @@ class RLEnvironment(Node):
 
     def timer_callback(self):
         self.get_logger().info('Stop called')
-        self.cmd_vel_pub.publish(Twist())
+        if ROS_DISTRO == 'humble':
+            self.cmd_vel_pub.publish(Twist())
+        else:
+            self.cmd_vel_pub.publish(TwistStamped())
         self.destroy_timer(self.stop_cmd_vel_timer)
 
     def euler_from_quaternion(self, quat):
