@@ -25,20 +25,16 @@ import os
 import random
 import sys
 import time
-
 import numpy
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float32MultiArray
 from std_srvs.srv import Empty
 import tensorflow
-from tensorflow.keras.layers import Dense
-from tensorflow.keras.layers import Input
-from tensorflow.keras.losses import MeanSquaredError
-from tensorflow.keras.models import load_model
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.optimizers import Adam
-
+from keras.layers import Dense, Input
+from keras.losses import MeanSquaredError
+from keras.models import load_model, Sequential
+from keras.optimizers import Adam
 from turtlebot3_msgs.srv import Dqn
 
 
@@ -99,16 +95,12 @@ class DQNAgent(Node):
         self.update_target_after = 5000
         self.target_update_after_counter = 0
 
-        self.load_model = False
-        self.load_episode = 0
-        self.model_dir_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
-            'saved_model'
-        )
-        self.model_path = os.path.join(
-            self.model_dir_path,
-            'stage' + str(self.stage) + '_episode' + str(self.load_episode) + '.h5'
-        )
+        self.load_model = True
+        self.load_episode = 600
+        self.model_dir_path = os.path.join(os.path.dirname(
+                os.path.dirname(os.path.realpath(__file__))),'saved_model')
+        self.model_path = os.path.join(self.model_dir_path,'stage' + str(self.stage) + 
+                                       '_episode' + str(self.load_episode) + '.h5')
 
         if self.load_model:
             self.model.set_weights(load_model(self.model_path).get_weights())
@@ -144,7 +136,7 @@ class DQNAgent(Node):
 
         episode_num = self.load_episode
 
-        for episode in range(self.load_episode + 1, self.max_training_episodes + 1):
+        for episode in range(self.load_episode+1, self.max_training_episodes + 1):
             state = self.reset_environment()
             episode_num += 1
             local_step = 0
@@ -194,15 +186,15 @@ class DQNAgent(Node):
                         'memory length:', len(self.replay_memory),
                         'epsilon:', self.epsilon)
 
-                    param_keys = ['epsilon', 'step']
+                    param_keys = ['epsilon', 'step_counter']
                     param_values = [self.epsilon, self.step_counter]
-                    param_dictionary = dict(zip(param_keys, param_values))
+                    param_dictionary = dict(zip(param_keys,param_values))
                     break
 
                 time.sleep(0.01)
 
             if self.train_mode:
-                if episode % 100 == 0:
+                if episode % 200 == 0:
                     self.model_path = os.path.join(
                         self.model_dir_path,
                         'stage' + str(self.stage) + '_episode' + str(episode) + '.h5')

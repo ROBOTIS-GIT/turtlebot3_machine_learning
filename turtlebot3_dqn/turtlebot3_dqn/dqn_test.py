@@ -21,16 +21,10 @@ import collections
 import os
 import sys
 import time
-
 import numpy
 import rclpy
 from rclpy.node import Node
-from tensorflow.keras.layers import Dense
-from tensorflow.keras.losses import MeanSquaredError
-from tensorflow.keras.models import load_model
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.optimizers import RMSprop
-
+from keras.models import load_model
 from turtlebot3_msgs.srv import Dqn
 
 
@@ -47,38 +41,18 @@ class DQNTest(Node):
 
         self.memory = collections.deque(maxlen=1000000)
 
-        self.model = self.build_model()
         model_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
             'saved_model',
             f'stage{self.stage}_episode{self.load_episode}.h5'
         )
-
-        loaded_model = load_model(
-            model_path, compile=False, custom_objects={'mse': MeanSquaredError()}
-        )
-        self.model.set_weights(loaded_model.get_weights())
-
+        self.model = load_model(model_path)
         self.rl_agent_interface_client = self.create_client(Dqn, 'rl_agent_interface')
-
         self.run_test()
-
-    def build_model(self):
-        model = Sequential()
-        model.add(Dense(
-            512, input_shape=(self.state_size,),
-            activation='relu',
-            kernel_initializer='lecun_uniform'
-        ))
-        model.add(Dense(256, activation='relu', kernel_initializer='lecun_uniform'))
-        model.add(Dense(128, activation='relu', kernel_initializer='lecun_uniform'))
-        model.add(Dense(self.action_size, activation='linear', kernel_initializer='lecun_uniform'))
-        model.compile(loss=MeanSquaredError(), optimizer=RMSprop(learning_rate=0.00025))
-        return model
 
     def get_action(self, state):
         state = numpy.asarray(state)
-        q_values = self.model.predict(state.reshape(1, -1), verbose=0)
+        q_values = self.model.predict(state.reshape(1,-1), verbose=0)
         return int(numpy.argmax(q_values[0]))
 
     def run_test(self):
