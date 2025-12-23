@@ -42,8 +42,6 @@ from tensorflow.keras.optimizers import Adam
 from turtlebot3_msgs.srv import Dqn
 
 
-tensorflow.config.set_visible_devices([], 'GPU')
-
 LOGGING = True
 current_time = datetime.datetime.now().strftime('[%mm%dd-%H:%M]')
 
@@ -69,14 +67,22 @@ class DQNMetric(tensorflow.keras.metrics.Metric):
 
 class DQNAgent(Node):
 
-    def __init__(self, stage_num, max_training_episodes):
+    def __init__(self):
         super().__init__('dqn_agent')
-
-        self.stage = int(stage_num)
+        self.declare_parameter('stage', 1)
+        self.declare_parameter('max_training_episodes', 1000)
+        self.declare_parameter('model_file', '')
+        self.declare_parameter('use_gpu', False)
+        self.stage = self.get_parameter('stage').get_parameter_value().integer_value
+        self.max_training_episodes = self.get_parameter('max_training_episodes').get_parameter_value().integer_value
+        model_file = self.get_parameter('model_file').get_parameter_value().string_value
+        use_gpu = self.get_parameter('use_gpu').get_parameter_value().bool_value
+        if not use_gpu:
+            tensorflow.config.set_visible_devices([], 'GPU')
+        print('hello', self.stage, self.max_training_episodes, model_file, use_gpu)
         self.train_mode = True
         self.state_size = 26
         self.action_size = 5
-        self.max_training_episodes = int(max_training_episodes)
 
         self.done = False
         self.succeed = False
@@ -94,31 +100,37 @@ class DQNAgent(Node):
         self.min_replay_memory_size = 5000
 
         self.model = self.create_qnetwork()
-        self.target_model = self.create_qnetwork()
-        self.update_target_model()
-        self.update_target_after = 5000
-        self.target_update_after_counter = 0
-
-        self.load_model = False
+        self.use_pretrained_model = bool(model_file)
         self.load_episode = 0
         self.model_dir_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
             'saved_model'
         )
-        self.model_path = os.path.join(
+        model_path = os.path.join(
             self.model_dir_path,
-            'stage' + str(self.stage) + '_episode' + str(self.load_episode) + '.h5'
+            model_file
         )
+        if self.use_pretrained_model:
+            self.model.set_weights(load_model(model_path).get_weights())
+            json_path = model_path.replace('.h5', '.json')
+            if os.path.exists(json_path):
+                with open(json_path) as outfile:
+                    param = json.load(outfile)
+                    self.epsilon = param.get('epsilon', self.epsilon)
+                    self.step_counter = param.get('step_counter', self.step_counter)
+                    self.load_episode = param.get('trained_episode', self.load_episode)
+                if self.load_episode > self.max_training_episodes:
+                    self.get_logger().error("Loaded model episode exceeds max training episodes.")
+                    sys.exit(1)
+            else:
+                self.get_logger().warn(
+                    f'JSON file not found for {model_file}, using default values.'
+                )
 
-        if self.load_model:
-            self.model.set_weights(load_model(self.model_path).get_weights())
-            with open(os.path.join(
-                self.model_dir_path,
-                'stage' + str(self.stage) + '_episode' + str(self.load_episode) + '.json'
-            )) as outfile:
-                param = json.load(outfile)
-                self.epsilon = param.get('epsilon')
-                self.step_counter = param.get('step_counter')
+        self.target_model = self.create_qnetwork()
+        self.update_target_after = 5000
+        self.target_update_after_counter = 0
+        self.update_target_model()
 
         if LOGGING:
             tensorboard_file_name = current_time + ' dqn_stage' + str(self.stage) + '_reward'
@@ -194,8 +206,8 @@ class DQNAgent(Node):
                         'memory length:', len(self.replay_memory),
                         'epsilon:', self.epsilon)
 
-                    param_keys = ['epsilon', 'step']
-                    param_values = [self.epsilon, self.step_counter]
+                    param_keys = ['epsilon', 'step_counter', 'trained_episode']
+                    param_values = [self.epsilon, self.step_counter, self.load_episode]
                     param_dictionary = dict(zip(param_keys, param_values))
                     break
 
@@ -203,10 +215,10 @@ class DQNAgent(Node):
 
             if self.train_mode:
                 if episode % 100 == 0:
-                    self.model_path = os.path.join(
+                    model_path = os.path.join(
                         self.model_dir_path,
                         'stage' + str(self.stage) + '_episode' + str(episode) + '.h5')
-                    self.model.save(self.model_path)
+                    self.model.save(model_path)
                     with open(
                         os.path.join(
                             self.model_dir_path,
@@ -345,13 +357,13 @@ class DQNAgent(Node):
 
 
 def main(args=None):
-    if args is None:
-        args = sys.argv
-    stage_num = args[1] if len(args) > 1 else '1'
-    max_training_episodes = args[2] if len(args) > 2 else '1000'
+    # if args is None:
+    #     args = sys.argv
+    # stage_num = args[1] if len(args) > 1 else '1'
+    # max_training_episodes = args[2] if len(args) > 2 else '1000'
     rclpy.init(args=args)
 
-    dqn_agent = DQNAgent(stage_num, max_training_episodes)
+    dqn_agent = DQNAgent()
     rclpy.spin(dqn_agent)
 
     dqn_agent.destroy_node()
