@@ -2,7 +2,7 @@
 Changelog for package turtlebot3_machine_learning
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1.0.2 (2026-1-6)
+1.0.2 (2026-01-06)
 ------------------
 * Fixed a bug in the JSON file where the step parameter was incorrectly named; renamed it to step_counter.
 * Changed the system arguments to be passed as ROS parameters for execution.
