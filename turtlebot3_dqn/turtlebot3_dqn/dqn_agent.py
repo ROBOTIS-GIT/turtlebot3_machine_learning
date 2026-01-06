@@ -23,6 +23,7 @@ import json
 import math
 import os
 import random
+import sys
 import time
 
 import numpy
@@ -36,25 +37,79 @@ from turtlebot3_msgs.srv import Dqn
 
 LOGGING = True
 current_time = datetime.datetime.now().strftime('[%mm%dd-%H:%M]')
+_tensorflow = None
+_Dense = None
+_Input = None
+_MeanSquaredError = None
+_load_model = None
+_Sequential = None
+_Adam = None
 
 
-class DQNMetric(tensorflow.keras.metrics.Metric):
+def _import_tensorflow():
+    try:
+        import tensorflow
+        from tensorflow.keras.layers import Dense
+        from tensorflow.keras.layers import Input
+        from tensorflow.keras.losses import MeanSquaredError
+        from tensorflow.keras.models import load_model
+        from tensorflow.keras.models import Sequential
+        from tensorflow.keras.optimizers import Adam
+        return (
+            tensorflow,
+            Dense,
+            Input,
+            MeanSquaredError,
+            load_model,
+            Sequential,
+            Adam
+        )
+    except ImportError as e:
+        print(f'Error importing TensorFlow: {e}', file=sys.stderr)
+        print('Please ensure TensorFlow is properly installed.', file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f'Fatal error during TensorFlow import: {e}', file=sys.stderr)
+        print('This may be due to missing system libraries or incompatible versions.',
+              file=sys.stderr)
+        sys.exit(1)
 
-    def __init__(self, name='dqn_metric'):
-        super(DQNMetric, self).__init__(name=name)
-        self.loss = self.add_weight(name='loss', initializer='zeros')
-        self.episode_step = self.add_weight(name='step', initializer='zeros')
 
-    def update_state(self, y_true, y_pred=0, sample_weight=None):
-        self.loss.assign_add(y_true)
-        self.episode_step.assign_add(1)
+def _ensure_tensorflow():
+    global _tensorflow, _Dense, _Input, _MeanSquaredError, _load_model, _Sequential, _Adam
+    if _tensorflow is None:
+        (_tensorflow,
+         _Dense,
+         _Input,
+         _MeanSquaredError,
+         _load_model,
+         _Sequential,
+         _Adam) = _import_tensorflow()
 
-    def result(self):
-        return self.loss / self.episode_step
 
-    def reset_states(self):
-        self.loss.assign(0)
-        self.episode_step.assign(0)
+def _create_dqn_metric_class():
+    _ensure_tensorflow()
+    base_class = _tensorflow.keras.metrics.Metric
+
+    class DQNMetric(base_class):
+
+        def __init__(self, name='dqn_metric'):
+            super(DQNMetric, self).__init__(name=name)
+            self.loss = self.add_weight(name='loss', initializer='zeros')
+            self.episode_step = self.add_weight(name='step', initializer='zeros')
+
+        def update_state(self, y_true, y_pred=0, sample_weight=None):
+            self.loss.assign_add(y_true)
+            self.episode_step.assign_add(1)
+
+        def result(self):
+            return self.loss / self.episode_step
+
+        def reset_states(self):
+            self.loss.assign(0)
+            self.episode_step.assign(0)
+
+    return DQNMetric
 
 
 class DQNAgent(Node):
@@ -72,8 +127,19 @@ class DQNAgent(Node):
         model_file = self.get_parameter('model_file').get_parameter_value().string_value
         use_gpu = self.get_parameter('use_gpu').get_parameter_value().bool_value
         self.verbose = self.get_parameter('verbose').get_parameter_value().bool_value
+
+        DQNMetric = _create_dqn_metric_class()
+        _ensure_tensorflow()
+        self.tf = _tensorflow
+        self.Dense = _Dense
+        self.Input = _Input
+        self.MeanSquaredError = _MeanSquaredError
+        self.load_model = _load_model
+        self.Sequential = _Sequential
+        self.Adam = _Adam
+
         if not use_gpu:
-            tensorflow.config.set_visible_devices([], 'GPU')
+            self.tf.config.set_visible_devices([], 'GPU')
 
         self.train_mode = True
         self.state_size = 26
@@ -108,7 +174,7 @@ class DQNAgent(Node):
             model_file
         )
         if self.use_pretrained_model:
-            self.model.set_weights(load_model(model_path).get_weights())
+            self.model.set_weights(self.load_model(model_path).get_weights())
             json_path = model_path.replace('.h5', '.json')
             if os.path.exists(json_path):
                 with open(json_path) as outfile:
@@ -135,7 +201,7 @@ class DQNAgent(Node):
             dqn_reward_log_dir = os.path.join(
                 home_dir, 'turtlebot3_dqn_logs', 'gradient_tape', tensorboard_file_name
             )
-            self.dqn_reward_writer = tensorflow.summary.create_file_writer(dqn_reward_log_dir)
+            self.dqn_reward_writer = self.tf.summary.create_file_writer(dqn_reward_log_dir)
             self.dqn_reward_metric = DQNMetric()
 
         self.rl_agent_interface_client = self.create_client(Dqn, 'rl_agent_interface')
@@ -192,7 +258,7 @@ class DQNAgent(Node):
                     if LOGGING:
                         self.dqn_reward_metric.update_state(score)
                         with self.dqn_reward_writer.as_default():
-                            tensorflow.summary.scalar(
+                            self.tf.summary.scalar(
                                 'dqn_reward', self.dqn_reward_metric.result(), step=episode_num
                             )
                         self.dqn_reward_metric.reset_states()
@@ -293,13 +359,15 @@ class DQNAgent(Node):
         return next_state, reward, done
 
     def create_qnetwork(self):
-        model = Sequential()
-        model.add(Input(shape=(self.state_size,)))
-        model.add(Dense(512, activation='relu'))
-        model.add(Dense(256, activation='relu'))
-        model.add(Dense(128, activation='relu'))
-        model.add(Dense(self.action_size, activation='linear'))
-        model.compile(loss=MeanSquaredError(), optimizer=Adam(learning_rate=self.learning_rate))
+        model = self.Sequential()
+        model.add(self.Input(shape=(self.state_size,)))
+        model.add(self.Dense(512, activation='relu'))
+        model.add(self.Dense(256, activation='relu'))
+        model.add(self.Dense(128, activation='relu'))
+        model.add(self.Dense(self.action_size, activation='linear'))
+        model.compile(
+            loss=self.MeanSquaredError(),
+            optimizer=self.Adam(learning_rate=self.learning_rate))
         model.summary()
 
         return model
@@ -347,8 +415,8 @@ class DQNAgent(Node):
         y_train = numpy.reshape(y_train, [len(data_in_mini_batch), self.action_size])
 
         self.model.fit(
-            tensorflow.convert_to_tensor(x_train, tensorflow.float32),
-            tensorflow.convert_to_tensor(y_train, tensorflow.float32),
+            self.tf.convert_to_tensor(x_train, self.tf.float32),
+            self.tf.convert_to_tensor(y_train, self.tf.float32),
             batch_size=self.batch_size, verbose=0
         )
         self.target_update_after_counter += 1
@@ -358,13 +426,6 @@ class DQNAgent(Node):
 
 
 def main(args=None):
-    import tensorflow
-    from tensorflow.keras.layers import Dense
-    from tensorflow.keras.layers import Input
-    from tensorflow.keras.losses import MeanSquaredError
-    from tensorflow.keras.models import load_model
-    from tensorflow.keras.models import Sequential
-    from tensorflow.keras.optimizers import Adam
     rclpy.init(args=args)
 
     dqn_agent = DQNAgent()

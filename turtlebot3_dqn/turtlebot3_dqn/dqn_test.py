@@ -28,6 +28,54 @@ from rclpy.node import Node
 
 from turtlebot3_msgs.srv import Dqn
 
+_tensorflow = None
+_Dense = None
+_MeanSquaredError = None
+_load_model = None
+_Sequential = None
+_RMSprop = None
+
+
+def _import_tensorflow():
+    """Lazy import TensorFlow and Keras modules."""
+    try:
+        import tensorflow
+        from tensorflow.keras.layers import Dense
+        from tensorflow.keras.losses import MeanSquaredError
+        from tensorflow.keras.models import load_model
+        from tensorflow.keras.models import Sequential
+        from tensorflow.keras.optimizers import RMSprop
+        return (
+            tensorflow,
+            Dense,
+            MeanSquaredError,
+            load_model,
+            Sequential,
+            RMSprop
+        )
+    except ImportError as e:
+        print(f'Error importing TensorFlow: {e}', file=sys.stderr)
+        print('Please ensure TensorFlow is properly installed.', file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f'Fatal error during TensorFlow import: {e}', file=sys.stderr)
+        print(
+            'This may be due to missing system libraries or incompatible versions.',
+            file=sys.stderr)
+        sys.exit(1)
+
+
+def _ensure_tensorflow():
+    """Ensure TensorFlow is imported and stored in global variables."""
+    global _tensorflow, _Dense, _MeanSquaredError, _load_model, _Sequential, _RMSprop
+    if _tensorflow is None:
+        (_tensorflow,
+         _Dense,
+         _MeanSquaredError,
+         _load_model,
+         _Sequential,
+         _RMSprop) = _import_tensorflow()
+
 
 class DQNTest(Node):
 
@@ -39,8 +87,18 @@ class DQNTest(Node):
         model_file = self.get_parameter('model_file').get_parameter_value().string_value
         use_gpu = self.get_parameter('use_gpu').get_parameter_value().bool_value
         self.verbose = self.get_parameter('verbose').get_parameter_value().bool_value
+
+        # Lazy import TensorFlow and store as instance variables
+        _ensure_tensorflow()
+        self.tf = _tensorflow
+        self.Dense = _Dense
+        self.MeanSquaredError = _MeanSquaredError
+        self.load_model = _load_model
+        self.Sequential = _Sequential
+        self.RMSprop = _RMSprop
+
         if not use_gpu:
-            tensorflow.config.set_visible_devices([], 'GPU')
+            self.tf.config.set_visible_devices([], 'GPU')
 
         self.state_size = 26
         self.action_size = 5
@@ -54,8 +112,8 @@ class DQNTest(Node):
             model_file
         )
 
-        loaded_model = load_model(
-            model_path, compile=False, custom_objects={'mse': MeanSquaredError()}
+        loaded_model = self.load_model(
+            model_path, compile=False, custom_objects={'mse': self.MeanSquaredError()}
         )
         self.model.set_weights(loaded_model.get_weights())
 
@@ -64,16 +122,20 @@ class DQNTest(Node):
         self.run_test()
 
     def build_model(self):
-        model = Sequential()
-        model.add(Dense(
+        model = self.Sequential()
+        model.add(self.Dense(
             512, input_shape=(self.state_size,),
             activation='relu',
             kernel_initializer='lecun_uniform'
         ))
-        model.add(Dense(256, activation='relu', kernel_initializer='lecun_uniform'))
-        model.add(Dense(128, activation='relu', kernel_initializer='lecun_uniform'))
-        model.add(Dense(self.action_size, activation='linear', kernel_initializer='lecun_uniform'))
-        model.compile(loss=MeanSquaredError(), optimizer=RMSprop(learning_rate=0.00025))
+        model.add(self.Dense(256, activation='relu', kernel_initializer='lecun_uniform'))
+        model.add(self.Dense(128, activation='relu', kernel_initializer='lecun_uniform'))
+        model.add(
+            self.Dense(
+                self.action_size,
+                activation='linear',
+                kernel_initializer='lecun_uniform'))
+        model.compile(loss=self.MeanSquaredError(), optimizer=self.RMSprop(learning_rate=0.00025))
         return model
 
     def get_action(self, state):
@@ -119,12 +181,6 @@ class DQNTest(Node):
 
 
 def main(args=None):
-    import tensorflow
-    from tensorflow.keras.layers import Dense
-    from tensorflow.keras.losses import MeanSquaredError
-    from tensorflow.keras.models import load_model
-    from tensorflow.keras.models import Sequential
-    from tensorflow.keras.optimizers import RMSprop
     rclpy.init(args=args if args else sys.argv)
     node = DQNTest()
 
