@@ -25,6 +25,7 @@ import time
 import numpy
 import rclpy
 from rclpy.node import Node
+import tensorflow
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.losses import MeanSquaredError
 from tensorflow.keras.models import load_model
@@ -44,7 +45,6 @@ class DQNTest(Node):
         model_file = self.get_parameter('model_file').get_parameter_value().string_value
         use_gpu = self.get_parameter('use_gpu').get_parameter_value().bool_value
         self.verbose = self.get_parameter('verbose').get_parameter_value().bool_value
-        import tensorflow
         if not use_gpu:
             tensorflow.config.set_visible_devices([], 'GPU')
 
