@@ -15,7 +15,7 @@
 # limitations under the License.
 #################################################################################
 #
-# Authors: Ryan Shim, Gilbert, ChanHyeong Lee
+# Authors: Ryan Shim, Gilbert, ChanHyeong Lee, Hyungyu Kim
 
 import collections
 import os
@@ -25,6 +25,7 @@ import time
 import numpy
 import rclpy
 from rclpy.node import Node
+import tensorflow
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.losses import MeanSquaredError
 from tensorflow.keras.models import load_model
@@ -36,11 +37,17 @@ from turtlebot3_msgs.srv import Dqn
 
 class DQNTest(Node):
 
-    def __init__(self, stage, load_episode):
+    def __init__(self):
         super().__init__('dqn_test')
+        self.declare_parameter('model_file', '')
+        self.declare_parameter('use_gpu', False)
+        self.declare_parameter('verbose', True)
+        model_file = self.get_parameter('model_file').get_parameter_value().string_value
+        use_gpu = self.get_parameter('use_gpu').get_parameter_value().bool_value
+        self.verbose = self.get_parameter('verbose').get_parameter_value().bool_value
 
-        self.stage = int(stage)
-        self.load_episode = int(load_episode)
+        if not use_gpu:
+            tensorflow.config.set_visible_devices([], 'GPU')
 
         self.state_size = 26
         self.action_size = 5
@@ -51,7 +58,7 @@ class DQNTest(Node):
         model_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
             'saved_model',
-            f'stage{self.stage}_episode{self.load_episode}.h5'
+            model_file
         )
 
         loaded_model = load_model(
@@ -78,7 +85,7 @@ class DQNTest(Node):
 
     def get_action(self, state):
         state = numpy.asarray(state)
-        q_values = self.model.predict(state.reshape(1, -1), verbose=0)
+        q_values = self.model.predict(state.reshape(1, -1), verbose=self.verbose)
         return int(numpy.argmax(q_values[0]))
 
     def run_test(self):
@@ -120,9 +127,7 @@ class DQNTest(Node):
 
 def main(args=None):
     rclpy.init(args=args if args else sys.argv)
-    stage = sys.argv[1] if len(sys.argv) > 1 else '1'
-    load_episode = sys.argv[2] if len(sys.argv) > 2 else '600'
-    node = DQNTest(stage, load_episode)
+    node = DQNTest()
 
     try:
         rclpy.spin(node)

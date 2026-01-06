@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>turtlebot3_dqn</name>
-  <version>1.0.1</version>
+  <version>1.0.2</version>
   <description>
     The turtlebot3_dqn package using reinforcement learning with DQN (Deep Q-Learning).
   </description>
@@ -12,6 +12,7 @@
   <url type="bugtracker">https://github.com/ROBOTIS-GIT/turtlebot3_machine_learning/issues</url>
   <author email="kkjong@robotis.com">Gilbert</author>
   <author email="dddoggi1207@gmail.com">ChanHyeong Lee</author>
+  <author email="kimhg@robotis.com">Hyungyu kim</author>
   <exec_depend>python3-pip</exec_depend>
   <exec_depend>ament_index_python</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>

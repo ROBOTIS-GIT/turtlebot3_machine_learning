@@ -15,7 +15,7 @@
 # limitations under the License.
 #################################################################################
 #
-# Authors: Ryan Shim, Gilbert, ChanHyeong Lee
+# Authors: Ryan Shim, Gilbert, ChanHyeong Lee, Hyungyu Kim
 
 import collections
 import datetime
@@ -69,17 +69,18 @@ class DQNAgent(Node):
 
     def __init__(self):
         super().__init__('dqn_agent')
-        self.declare_parameter('stage', 1)
+        self.declare_parameter('epsilon_decay', 6000)
         self.declare_parameter('max_training_episodes', 1000)
         self.declare_parameter('model_file', '')
         self.declare_parameter('use_gpu', False)
-        self.stage = self.get_parameter('stage').get_parameter_value().integer_value
+        self.declare_parameter('verbose', True)
         self.max_training_episodes = self.get_parameter('max_training_episodes').get_parameter_value().integer_value
         model_file = self.get_parameter('model_file').get_parameter_value().string_value
         use_gpu = self.get_parameter('use_gpu').get_parameter_value().bool_value
+        self.verbose = self.get_parameter('verbose').get_parameter_value().bool_value
         if not use_gpu:
             tensorflow.config.set_visible_devices([], 'GPU')
-        print('hello', self.stage, self.max_training_episodes, model_file, use_gpu)
+
         self.train_mode = True
         self.state_size = 26
         self.action_size = 5
@@ -92,7 +93,7 @@ class DQNAgent(Node):
         self.learning_rate = 0.0007
         self.epsilon = 1.0
         self.step_counter = 0
-        self.epsilon_decay = 6000 * self.stage
+        self.epsilon_decay = self.get_parameter('epsilon_decay').get_parameter_value().integer_value
         self.epsilon_min = 0.05
         self.batch_size = 128
 
@@ -118,8 +119,8 @@ class DQNAgent(Node):
                     param = json.load(outfile)
                     self.epsilon = param.get('epsilon', self.epsilon)
                     self.step_counter = param.get('step_counter', self.step_counter)
-                    self.load_episode = param.get('trained_episode', self.load_episode)
-                if self.load_episode > self.max_training_episodes:
+                    self.load_episode = param.get('trained_episodes', self.load_episode)
+                if self.load_episode >= self.max_training_episodes:
                     self.get_logger().error("Loaded model episode exceeds max training episodes.")
                     sys.exit(1)
             else:
@@ -133,7 +134,7 @@ class DQNAgent(Node):
         self.update_target_model()
 
         if LOGGING:
-            tensorboard_file_name = current_time + ' dqn_stage' + str(self.stage) + '_reward'
+            tensorboard_file_name = current_time + ' dqn_reward'
             home_dir = os.path.expanduser('~')
             dqn_reward_log_dir = os.path.join(
                 home_dir, 'turtlebot3_dqn_logs', 'gradient_tape', tensorboard_file_name
@@ -168,7 +169,7 @@ class DQNAgent(Node):
             while True:
                 local_step += 1
 
-                q_values = self.model.predict(state)
+                q_values = self.model.predict(state, verbose=self.verbose)
                 sum_max_q += float(numpy.max(q_values))
 
                 action = int(self.get_action(state))
@@ -206,8 +207,8 @@ class DQNAgent(Node):
                         'memory length:', len(self.replay_memory),
                         'epsilon:', self.epsilon)
 
-                    param_keys = ['epsilon', 'step_counter', 'trained_episode']
-                    param_values = [self.epsilon, self.step_counter, self.load_episode]
+                    param_keys = ['epsilon', 'step_counter', 'trained_episodes']
+                    param_values = [self.epsilon, self.step_counter, episode]
                     param_dictionary = dict(zip(param_keys, param_values))
                     break
 
@@ -215,17 +216,21 @@ class DQNAgent(Node):
 
             if self.train_mode:
                 if episode % 100 == 0:
-                    model_path = os.path.join(
-                        self.model_dir_path,
-                        'stage' + str(self.stage) + '_episode' + str(episode) + '.h5')
-                    self.model.save(model_path)
-                    with open(
-                        os.path.join(
+                    idx = 1
+                    while True:
+                        model_path = os.path.join(
                             self.model_dir_path,
-                            'stage' + str(self.stage) + '_episode' + str(episode) + '.json'
-                        ),
-                        'w'
-                    ) as outfile:
+                            f'model{idx}.h5'
+                        )
+                        json_path  = os.path.join(
+                            self.model_dir_path,
+                            f'model{idx}.json'
+                        )
+                        if not os.path.exists(model_path):
+                            break
+                        idx += 1
+                    self.model.save(model_path)
+                    with open(json_path, 'w') as outfile:
                         json.dump(param_dictionary, outfile)
 
     def env_make(self):
@@ -263,9 +268,9 @@ class DQNAgent(Node):
             if lucky > (1 - self.epsilon):
                 result = random.randint(0, self.action_size - 1)
             else:
-                result = numpy.argmax(self.model.predict(state))
+                result = numpy.argmax(self.model.predict(state, verbose=self.verbose))
         else:
-            result = numpy.argmax(self.model.predict(state))
+            result = numpy.argmax(self.model.predict(state, verbose=self.verbose))
 
         return result
 
@@ -318,11 +323,11 @@ class DQNAgent(Node):
 
         current_states = numpy.array([transition[0] for transition in data_in_mini_batch])
         current_states = current_states.squeeze()
-        current_qvalues_list = self.model.predict(current_states)
+        current_qvalues_list = self.model.predict(current_states, verbose=self.verbose)
 
         next_states = numpy.array([transition[3] for transition in data_in_mini_batch])
         next_states = next_states.squeeze()
-        next_qvalues_list = self.target_model.predict(next_states)
+        next_qvalues_list = self.target_model.predict(next_states, verbose=self.verbose)
 
         x_train = []
         y_train = []
@@ -357,10 +362,6 @@ class DQNAgent(Node):
 
 
 def main(args=None):
-    # if args is None:
-    #     args = sys.argv
-    # stage_num = args[1] if len(args) > 1 else '1'
-    # max_training_episodes = args[2] if len(args) > 2 else '1000'
     rclpy.init(args=args)
 
     dqn_agent = DQNAgent()
