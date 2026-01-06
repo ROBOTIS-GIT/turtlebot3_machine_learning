@@ -30,13 +30,6 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float32MultiArray
 from std_srvs.srv import Empty
-import tensorflow
-from tensorflow.keras.layers import Dense
-from tensorflow.keras.layers import Input
-from tensorflow.keras.losses import MeanSquaredError
-from tensorflow.keras.models import load_model
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.optimizers import Adam
 
 from turtlebot3_msgs.srv import Dqn
 
@@ -365,6 +358,13 @@ class DQNAgent(Node):
 
 
 def main(args=None):
+    import tensorflow
+    from tensorflow.keras.layers import Dense
+    from tensorflow.keras.layers import Input
+    from tensorflow.keras.losses import MeanSquaredError
+    from tensorflow.keras.models import load_model
+    from tensorflow.keras.models import Sequential
+    from tensorflow.keras.optimizers import Adam
     rclpy.init(args=args)
 
     dqn_agent = DQNAgent()

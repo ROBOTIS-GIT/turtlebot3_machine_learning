@@ -25,12 +25,6 @@ import time
 import numpy
 import rclpy
 from rclpy.node import Node
-import tensorflow
-from tensorflow.keras.layers import Dense
-from tensorflow.keras.losses import MeanSquaredError
-from tensorflow.keras.models import load_model
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.optimizers import RMSprop
 
 from turtlebot3_msgs.srv import Dqn
 
@@ -125,6 +119,12 @@ class DQNTest(Node):
 
 
 def main(args=None):
+    import tensorflow
+    from tensorflow.keras.layers import Dense
+    from tensorflow.keras.losses import MeanSquaredError
+    from tensorflow.keras.models import load_model
+    from tensorflow.keras.models import Sequential
+    from tensorflow.keras.optimizers import RMSprop
     rclpy.init(args=args if args else sys.argv)
     node = DQNTest()
 
