@@ -23,7 +23,6 @@ import json
 import math
 import os
 import random
-import sys
 import time
 
 import numpy
@@ -74,7 +73,9 @@ class DQNAgent(Node):
         self.declare_parameter('model_file', '')
         self.declare_parameter('use_gpu', False)
         self.declare_parameter('verbose', True)
-        self.max_training_episodes = self.get_parameter('max_training_episodes').get_parameter_value().integer_value
+        self.max_training_episodes = self.get_parameter(
+            'max_training_episodes'
+        ).get_parameter_value().integer_value
         model_file = self.get_parameter('model_file').get_parameter_value().string_value
         use_gpu = self.get_parameter('use_gpu').get_parameter_value().bool_value
         self.verbose = self.get_parameter('verbose').get_parameter_value().bool_value
@@ -93,7 +94,9 @@ class DQNAgent(Node):
         self.learning_rate = 0.0007
         self.epsilon = 1.0
         self.step_counter = 0
-        self.epsilon_decay = self.get_parameter('epsilon_decay').get_parameter_value().integer_value
+        self.epsilon_decay = self.get_parameter(
+            'epsilon_decay'
+        ).get_parameter_value().integer_value
         self.epsilon_min = 0.05
         self.batch_size = 128
 
@@ -121,8 +124,8 @@ class DQNAgent(Node):
                     self.step_counter = param.get('step_counter', self.step_counter)
                     self.load_episode = param.get('trained_episodes', self.load_episode)
                 if self.load_episode >= self.max_training_episodes:
-                    self.get_logger().error("Loaded model episode exceeds max training episodes.")
-                    sys.exit(1)
+                    self.get_logger().error('Loaded model episode exceeds max training episodes.')
+                    raise ValueError('Loaded model episode exceeds max training episodes.')
             else:
                 self.get_logger().warn(
                     f'JSON file not found for {model_file}, using default values.'
@@ -222,7 +225,7 @@ class DQNAgent(Node):
                             self.model_dir_path,
                             f'model{idx}.h5'
                         )
-                        json_path  = os.path.join(
+                        json_path = os.path.join(
                             self.model_dir_path,
                             f'model{idx}.json'
                         )
