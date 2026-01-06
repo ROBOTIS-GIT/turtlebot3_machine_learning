@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>turtlebot3_machine_learning</name>
-  <version>1.0.1</version>
+  <version>1.0.2</version>
   <description>
     This metapackage for ROS 2 TurtleBot3 machine learning.
   </description>
@@ -12,6 +12,7 @@
   <url type="bugtracker">https://github.com/ROBOTIS-GIT/turtlebot3_machine_learning/issues</url>
   <author email="kkjong@robotis.com">Gilbert</author>
   <author email="dddoggi1207@gmail.com">ChanHyeong Lee</author>
+  <author email="kimhg@robotis.com">Hyungyu Kim</author>
   <exec_depend>turtlebot3_dqn</exec_depend>
   <export>
     <build_type>ament_cmake</build_type>
