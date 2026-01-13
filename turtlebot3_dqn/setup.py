@@ -8,20 +8,28 @@ authors_info = [
     ('Gilbert', 'kkjong@robotis.com'),
     ('Ryan Shim', 'N/A'),
     ('ChanHyeong Lee', 'dddoggi1207@gmail.com'),
+    ('Hyungyu Kim', 'kimhg@robotis.com'),
 ]
 authors = ', '.join(author for author, _ in authors_info)
 author_emails = ', '.join(email for _, email in authors_info)
 
 setup(
     name=package_name,
-    version='1.0.1',
+    version='1.0.2',
     packages=find_packages(),
     data_files=[
         ('share/ament_index/resource_index/packages', ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name + '/launch', glob.glob('launch/*.py')),
     ],
-    install_requires=['setuptools', 'launch'],
+    install_requires=[
+        'setuptools',
+        'launch',
+        'tensorflow==2.19.0',
+        'numpy==1.26.4',
+        'scipy==1.10.1',
+        'keras==3.9.2',
+    ],
     zip_safe=True,
     author=authors,
     author_email=author_emails,
