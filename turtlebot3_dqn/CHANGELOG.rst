@@ -2,6 +2,10 @@
 Changelog for package turtlebot3_dqn
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.0.3 (2026-01-19)
+------------------
+* None
+
 1.0.2 (2026-01-06)
 ------------------
 * Fixed a bug in the JSON file where the step parameter was incorrectly named; renamed it to step_counter.
